@@ -346,6 +346,14 @@ FINDINGS: dict[str, dict] = {
             "Los scripts de build o herramientas son comunes en los repos. El juego nunca los ejecuta; no los ejecutes vos salvo que sepas qué hacen.",
         ),
     },
+    "PKG_ENCRYPTED": {
+        "severity": "medium",
+        "en": ("Password-protected files", "The scanner cannot see inside them, and addons have no reason to ship encrypted files."),
+        "es": (
+            "Archivos con contraseña",
+            "El escáner no puede ver qué tienen, y un addon no tiene motivo para traer archivos encriptados.",
+        ),
+    },
     "PKG_NESTED_ARCHIVE": {
         "severity": "medium",
         "en": (
@@ -585,3 +593,28 @@ VERDICTS = {
     "low": {"en": "No warning signs", "es": "Sin señales de riesgo"},
     "info": {"en": "No warning signs", "es": "Sin señales de riesgo"},
 }
+
+DISCLAIMER = {
+    "en": "This is an automatic check of the code's patterns. It cannot prove an addon is safe, and a warning is not proof of bad intent. When in doubt, download addons only from their official page.",
+    "es": "Es un chequeo automático de patrones en el código. No puede probar que un addon sea seguro, y una advertencia no prueba mala intención. Ante la duda, bajá los addons solo de su página oficial.",
+}
+
+
+def export() -> dict:
+    """Everything the JavaScript engine needs, so both engines share one source of truth."""
+    return {
+        "capabilities": {k: {"api": sorted(v["api"]), "en": v["en"], "es": v["es"]} for k, v in CAPABILITIES.items()},
+        "sensitive_hook_targets": sorted(SENSITIVE_HOOK_TARGETS),
+        "sensitive_frame_prefixes": list(SENSITIVE_FRAME_PREFIXES),
+        "hiding_filter_events": sorted(HIDING_FILTER_EVENTS),
+        "remote_input_events": sorted(REMOTE_INPUT_EVENTS),
+        "executable_extensions": sorted(EXECUTABLE_EXTENSIONS),
+        "script_extensions": sorted(SCRIPT_EXTENSIONS),
+        "archive_extensions": sorted(ARCHIVE_EXTENSIONS),
+        "addon_extensions": sorted(ADDON_EXTENSIONS),
+        "severities": SEVERITIES,
+        "severity_names": SEVERITY_NAMES,
+        "findings": FINDINGS,
+        "verdicts": VERDICTS,
+        "disclaimer": DISCLAIMER,
+    }

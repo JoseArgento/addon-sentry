@@ -179,6 +179,19 @@ def test_zip_package_problems():
     assert got["PKG_NESTED_ARCHIVE"] == ["Good/extra.zip"] and got["PKG_SCRIPT"] == ["Good/build.sh"]
 
 
+def test_encrypted_member_is_reported_not_crashed():
+    data = bytearray(make_zip([("A/A.toc", "## Interface: 16001\nA.lua\n"), ("A/A.lua", "print(1)")]))
+    # set the "encrypted" flag on every local and central header
+    for sig in (b"PK\x03\x04", b"PK\x01\x02"):
+        pos = data.find(sig)
+        while pos != -1:
+            off = pos + (6 if sig == b"PK\x03\x04" else 8)
+            data[off] |= 1
+            pos = data.find(sig, pos + 4)
+    r = engine.scan_bytes(bytes(data))
+    assert "PKG_ENCRYPTED" in ids(r)
+
+
 def test_zip_bomb_and_garbage():
     bomb = make_zip([("A/big.lua", "a" * (12 * 1024 * 1024))])
     with pytest.raises(engine.ScanError, match="zip bomb"):

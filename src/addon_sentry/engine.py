@@ -124,8 +124,14 @@ def read_zip(data: bytes, name: str = "addon.zip") -> Package:
             raise ScanError("the zip unpacks to more than 300 MB; refusing to scan it")
         if info.file_size > 10 * 1024 * 1024 and info.compress_size and info.file_size / info.compress_size > MAX_RATIO:
             raise ScanError(f"{info.filename} looks like a zip bomb (compression ratio over {MAX_RATIO})")
+        if info.flag_bits & 0x1:
+            hit("PKG_ENCRYPTED", path, "password protected")
+            continue
         if _wanted(path) and info.file_size <= MAX_FILE_BYTES:
-            files[path] = zf.read(info)
+            try:
+                files[path] = zf.read(info)
+            except (zipfile.BadZipFile, NotImplementedError, OSError, EOFError) as e:
+                raise ScanError(f"cannot read {info.filename}: {e}") from e
     return Package(name, files, list(hits.values()), sum(1 for i in infos if not i.is_dir()), total)
 
 
@@ -223,7 +229,7 @@ def build_units(files: dict[str, bytes]) -> list[Unit]:
                 units.append(Unit(f"{path}#{m.group(1)}{k}", _xml_unescape(body), line - 1))
     for u in units:
         u.scan = scan(u.path, u.source)
-        u.lines = u.source.splitlines()
+        u.lines = u.source.split("\n")  # same line numbering as the lexer (\r is stripped in snippets)
     return units
 
 
@@ -430,7 +436,8 @@ def _named_access(u: Unit, facts: Facts, tok: Token, name: str, toks: list[Token
     cap = rules.API_CAPABILITY.get(name)
     if cap:
         ev = _ev(u, tok, f'_G["{name}"]')
-        facts.caps[cap].append(ev)
+        if len(facts.caps[cap]) < 40:
+            facts.caps[cap].append(ev)
         if cap == "money":
             facts.money_units.add(key)
         if name in CODE_RUNNERS:
@@ -691,14 +698,8 @@ class Report:
                 for h in self.findings
             ],
             "stats": self.stats,
-            "disclaimer": DISCLAIMER[lang],
+            "disclaimer": rules.DISCLAIMER[lang],
         }
-
-
-DISCLAIMER = {
-    "en": "This is an automatic check of the code's patterns. It cannot prove an addon is safe, and a warning is not proof of bad intent. When in doubt, download addons only from their official page.",
-    "es": "Es un chequeo automático de patrones en el código. No puede probar que un addon sea seguro, y una advertencia no prueba mala intención. Ante la duda, bajá los addons solo de su página oficial.",
-}
 
 
 def analyse(pkg: Package) -> Report:
@@ -733,7 +734,7 @@ def analyse(pkg: Package) -> Report:
             for ev in facts.dynamic_code[path][:3]:
                 facts.hit("LISTENS_AND_RUNS", ev)
 
-    for path in facts.obfuscated:
+    for path in sorted(facts.obfuscated):
         # Encoded code that gets run: a template does not excuse it when the "template" itself is hidden.
         for ev in (facts.dynamic_code.get(path, []) + facts.template_code.get(path, []))[:3]:
             facts.hit("OBFUSCATED_LOADER", ev)
