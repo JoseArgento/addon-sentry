@@ -1,0 +1,3 @@
+## Interface: 16001
+## Title: Fast Buyer
+Scam.lua
