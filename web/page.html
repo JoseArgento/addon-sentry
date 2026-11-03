@@ -1,0 +1,364 @@
+<title>Addon Sentry</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Revisá un addon de World of Warcraft antes de instalarlo. El archivo no sale de tu compu.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a customs inspection slip. The tray (drop zone) on top, the verdict stamped onto the report, evidence as a ledger. */
+:root {
+  --paper: #eef1f3;
+  --sheet: #fbfcfc;
+  --ink: #18222c;
+  --muted: #5b6874;
+  --rule: #cfd6dc;
+  --accent: #1d5c63;
+  --accent-ink: #ffffff;
+  --crit: #b3261e;
+  --high: #c4561b;
+  --med: #a5770a;
+  --low: #3b6e8f;
+  --ok: #2e7d4f;
+  --tray: #e3e8ec;
+  --display: "Big Shoulders Stencil Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12181d; --sheet: #182027; --ink: #e4e9ed; --muted: #97a3ad; --rule: #2c3842; --accent: #5fb3ba; --accent-ink: #0d1418;
+    --crit: #f2776d; --high: #f0955e; --med: #e2b84a; --low: #7fb4d6; --ok: #6cc48f; --tray: #1d272f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12181d; --sheet: #182027; --ink: #e4e9ed; --muted: #97a3ad; --rule: #2c3842; --accent: #5fb3ba; --accent-ink: #0d1418;
+  --crit: #f2776d; --high: #f0955e; --med: #e2b84a; --low: #7fb4d6; --ok: #6cc48f; --tray: #1d272f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+.brandline { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font: 800 clamp(40px, 8vw, 64px)/0.9 var(--display); letter-spacing: 0.02em; margin: 0; text-transform: uppercase; }
+.tag { margin: 0; color: var(--muted); max-width: 60ch; }
+.lang { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
+.lang button { font: 500 13px var(--mono); padding: 6px 12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+button:focus-visible, label:focus-within, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* tray */
+.tray {
+  display: grid; gap: 14px; padding: 22px; border-radius: 14px; background: var(--tray);
+  border: 2px dashed color-mix(in srgb, var(--ink) 30%, transparent); transition: border-color .15s, background .15s;
+}
+.tray.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--tray)); }
+.tray-main { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.tray-text { display: grid; gap: 2px; min-width: 0; }
+.tray-text strong { font: 700 19px var(--body); }
+.tray-text span { color: var(--muted); font-size: 14px; }
+.pick { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--accent-ink); font: 700 15px var(--body); padding: 11px 18px; border-radius: 10px; cursor: pointer; }
+.pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.examples { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); }
+.examples button { font: 500 13px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.examples button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--muted); margin: 0; }
+.privacy svg { flex: none; margin-top: 2px; }
+
+/* report sheet */
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 26px clamp(18px, 4vw, 34px); display: grid; gap: 22px; position: relative; }
+.sheet-head { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: start; }
+@media (max-width: 560px) { .sheet-head { grid-template-columns: 1fr; } }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.example-flag { color: var(--med); }
+.target { font: 700 22px/1.25 var(--body); margin: 4px 0 2px; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: 14px; margin: 0; overflow-wrap: anywhere; }
+.stamp {
+  justify-self: end; transform: rotate(-6deg); border: 4px solid currentColor; border-radius: 8px; padding: 8px 16px 6px;
+  font: 800 30px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; text-align: center; max-width: 260px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.stamp small { display: block; font: 500 11px var(--mono); letter-spacing: 0.12em; margin-top: 4px; }
+@media (max-width: 560px) { .stamp { justify-self: start; } }
+.lvl-critical { color: var(--crit); } .lvl-high { color: var(--high); } .lvl-medium { color: var(--med); }
+.stamp.lvl-low, .stamp.lvl-info { color: var(--ok); }
+.finding.lvl-low { color: var(--low); } .finding.lvl-info { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .stamp.fresh { animation: thunk .35s cubic-bezier(.2, 1.6, .4, 1); } }
+@keyframes thunk { from { transform: rotate(-14deg) scale(1.6); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+
+h2 { font: 800 22px/1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 10px; }
+.caps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.caps li { border: 1px solid var(--rule); border-radius: 999px; padding: 5px 12px; font-size: 14px; display: inline-flex; gap: 8px; align-items: baseline; }
+.caps li b { font: 500 12px var(--mono); color: var(--muted); }
+.none { color: var(--muted); margin: 0; }
+
+.findings { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.finding { border-left: 5px solid currentColor; padding: 2px 0 2px 14px; display: grid; gap: 6px; }
+.finding .sev { font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.finding h3 { font: 700 17px/1.3 var(--body); margin: 0; color: var(--ink); }
+.finding p { margin: 0; color: var(--muted); max-width: 70ch; }
+.ledger { margin: 4px 0 0; padding: 8px 10px; list-style: none; background: color-mix(in srgb, var(--ink) 4%, transparent); border-radius: 6px; overflow-x: auto; display: grid; gap: 4px; }
+.ledger li { font: 13px/1.45 var(--mono); color: var(--ink); white-space: pre; }
+.ledger .loc { color: var(--muted); }
+.ledger .more { color: var(--muted); font-style: italic; white-space: normal; }
+details.quiet summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+details.quiet[open] summary { margin-bottom: 10px; }
+
+.disclaimer { border-top: 1px solid var(--rule); padding-top: 14px; margin: 0; font-size: 14px; color: var(--muted); max-width: 75ch; }
+.error { border-left: 5px solid var(--crit); padding: 10px 14px; background: color-mix(in srgb, var(--crit) 8%, transparent); border-radius: 0 6px 6px 0; margin: 0; }
+.busy { color: var(--muted); font: 500 14px var(--mono); }
+
+.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; }
+.how div { min-width: 0; }
+.how h2 { font-size: 18px; }
+.how p, .how ul { margin: 0; color: var(--muted); font-size: 15px; }
+.how ul { padding-left: 18px; display: grid; gap: 4px; }
+footer { color: var(--muted); font-size: 13px; text-align: left; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brandline">
+      <h1>Addon Sentry</h1>
+      <div class="lang" role="group" aria-label="Idioma / Language">
+        <button type="button" data-lang="es" aria-pressed="true">ES</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+    <p class="tag" data-t="tagline"></p>
+  </header>
+
+  <section class="tray" id="tray" aria-labelledby="tray-title">
+    <div class="tray-main">
+      <div class="tray-text">
+        <strong id="tray-title" data-t="drop"></strong>
+        <span data-t="dropHint"></span>
+      </div>
+      <label class="pick">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
+        <span data-t="choose"></span>
+        <input type="file" id="file" accept=".zip,application/zip">
+      </label>
+    </div>
+    <div class="examples" id="examples"><span data-t="tryExample"></span></div>
+    <p class="privacy">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span data-t="privacy"></span>
+    </p>
+  </section>
+
+  <section class="sheet" id="report" aria-live="polite"></section>
+
+  <section class="how">
+    <div>
+      <h2 data-t="howTitle"></h2>
+      <p data-t="howText"></p>
+    </div>
+    <div>
+      <h2 data-t="looksTitle"></h2>
+      <ul id="looks"></ul>
+    </div>
+    <div>
+      <h2 data-t="limitsTitle"></h2>
+      <p data-t="limitsText"></p>
+    </div>
+  </section>
+  <footer data-t="footer"></footer>
+</div>
+
+<script>/*__RULES__*/</script>
+<script>/*__ENGINE__*/</script>
+<script>/*__EXAMPLES__*/</script>
+<script>
+(function () {
+  "use strict";
+  const T = {
+    es: {
+      tagline: "Revisá un addon de World of Warcraft antes de instalarlo: puertas traseras, trucos para mover tu oro, código escondido y archivos que no deberían estar ahí.",
+      drop: "Soltá acá el .zip del addon",
+      dropHint: "O elegilo desde tu compu. Funciona con cualquier addon, de Classic, Forever o retail.",
+      choose: "Elegir archivo",
+      tryExample: "Ejemplos:",
+      privacy: "El archivo no sale de tu compu: se analiza dentro de esta página y no se sube a ningún lado.",
+      example: "Ejemplo",
+      scanned: "Analizado",
+      files: "archivos", lines: "líneas de Lua", xml: "scripts en XML",
+      can: "Qué puede hacer",
+      canNone: "No usa nada sensible: no mueve oro, no manda mensajes, no ejecuta código armado en el momento.",
+      signals: "Señales",
+      signalsNone: "Nada que reportar.",
+      minor: (n) => `${n} detalle${n === 1 ? "" : "s"} informativo${n === 1 ? "" : "s"}`,
+      more: (n) => `y ${n} más`,
+      busy: "Analizando…",
+      errTitle: "No se pudo analizar el archivo",
+      notZip: "Elegí un archivo .zip.",
+      howTitle: "Cómo funciona",
+      howText: "Lee el código Lua del addon sin ejecutarlo y busca patrones conocidos de estafas y malware. Distingue lo que el addon puede hacer (muchos addons legítimos mueven oro o mandan mensajes) de las combinaciones que no tienen explicación inocente.",
+      looksTitle: "Qué busca",
+      looks: [
+        "Código que ejecuta lo que le mandan otros jugadores",
+        "Funciones de Blizzard reemplazadas para mentirte sobre precios u oro",
+        "Código ofuscado que se decodifica y se ejecuta",
+        "Nombres de funciones armados de a pedazos para no llamar la atención",
+        "Ejecutables, rutas que escapan de la carpeta y archivos con contraseña",
+        "Addons que juntan estadísticas de otros jugadores",
+      ],
+      limitsTitle: "Lo que no puede",
+      limitsText: "Es un chequeo automático: no prueba que un addon sea seguro y una advertencia no prueba mala intención. Bajá los addons de su página oficial y desconfiá de quien te pase uno por susurro o Discord.",
+      footer: "Addon Sentry · código abierto, licencia MIT · sin relación con Blizzard Entertainment. World of Warcraft es marca registrada de Blizzard Entertainment, Inc.",
+    },
+    en: {
+      tagline: "Check a World of Warcraft addon before you install it: backdoors, tricks that move your gold, hidden code and files that should not be there.",
+      drop: "Drop the addon's .zip here",
+      dropHint: "Or pick it from your computer. Works with any addon: Classic, Forever or retail.",
+      choose: "Choose file",
+      tryExample: "Examples:",
+      privacy: "The file never leaves your computer: it is checked inside this page and not uploaded anywhere.",
+      example: "Example",
+      scanned: "Checked",
+      files: "files", lines: "lines of Lua", xml: "XML scripts",
+      can: "What it can do",
+      canNone: "Uses nothing sensitive: does not move gold, send messages or run code built at runtime.",
+      signals: "Signals",
+      signalsNone: "Nothing to report.",
+      minor: (n) => `${n} informational detail${n === 1 ? "" : "s"}`,
+      more: (n) => `and ${n} more`,
+      busy: "Checking…",
+      errTitle: "The file could not be checked",
+      notZip: "Choose a .zip file.",
+      howTitle: "How it works",
+      howText: "It reads the addon's Lua code without running it and looks for known scam and malware patterns. It separates what an addon can do (many legitimate addons move gold or send messages) from combinations with no innocent explanation.",
+      looksTitle: "What it looks for",
+      looks: [
+        "Code that runs whatever other players send it",
+        "Blizzard functions replaced to lie about prices or gold",
+        "Obfuscated code that is decoded and run",
+        "Function names built piece by piece to avoid notice",
+        "Executables, paths that escape the folder and password-protected files",
+        "Addons that collect other players' statistics",
+      ],
+      limitsTitle: "What it cannot do",
+      limitsText: "It is an automatic check: it cannot prove an addon is safe, and a warning is not proof of bad intent. Download addons from their official page and be wary of anyone who sends you one by whisper or Discord.",
+      footer: "Addon Sentry · open source, MIT license · not affiliated with Blizzard Entertainment. World of Warcraft is a trademark of Blizzard Entertainment, Inc.",
+    },
+  };
+
+  const engine = AddonSentry.make(ADDON_SENTRY_RULES);
+  let lang = "es";
+  try { const saved = localStorage.getItem("addon-sentry-lang"); if (saved === "en" || saved === "es") lang = saved; } catch (e) {}
+  let current = null; // { kind: "example"|"file", name, buffer|exampleId }
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+
+  function applyTexts() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-t]").forEach((n) => { n.textContent = T[lang][n.dataset.t]; });
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    const looks = $("#looks");
+    looks.replaceChildren(...T[lang].looks.map((x) => el("li", { text: x })));
+    const ex = $("#examples");
+    ex.querySelectorAll("button").forEach((b) => b.remove());
+    for (const e of ADDON_SENTRY_EXAMPLES) {
+      const b = el("button", { type: "button", "data-example": e.id, "aria-pressed": String(current && current.kind === "example" && current.id === e.id) }, e.label[lang]);
+      b.addEventListener("click", () => runExample(e.id));
+      ex.append(b);
+    }
+  }
+
+  function render(d, isExample, fresh) {
+    const r = $("#report");
+    const L = T[lang];
+    const level = d.verdict.level;
+    const a = d.addons[0] || {};
+    const title = a.title || d.target;
+    const bits = [a.version && a.version.indexOf("@") < 0 ? "v" + a.version : null, a.author].filter(Boolean).join(" · ");
+    const st = d.stats;
+    const head = el("div", { class: "sheet-head" },
+      el("div", {},
+        el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
+        el("p", { class: "target", text: title }),
+        el("p", { class: "meta", text: [bits, `${st.files} ${L.files}`, `${st.lines.toLocaleString(lang)} ${L.lines}`, st.xml_scripts ? `${st.xml_scripts} ${L.xml}` : null].filter(Boolean).join(" · ") }),
+      ),
+      el("div", { class: `stamp lvl-${level}${fresh ? " fresh" : ""}`, role: "img", "aria-label": d.verdict.text }, d.verdict.text, el("small", { text: "addon-sentry " + d.tool.version })),
+    );
+    const caps = el("div", {}, el("h2", { text: L.can }),
+      d.capabilities.length
+        ? el("ul", { class: "caps" }, ...d.capabilities.map((c) => el("li", {}, c.text, el("b", { text: "×" + c.count }))))
+        : el("p", { class: "none", text: L.canNone }));
+    const main = d.findings.filter((f) => f.severity !== "info");
+    const minor = d.findings.filter((f) => f.severity === "info");
+    const findingNode = (f) => {
+      const shown = f.evidence.slice(0, 4);
+      return el("li", { class: `finding lvl-${f.severity}` },
+        el("span", { class: "sev", text: f.severity_text }),
+        el("h3", { text: f.title }),
+        el("p", { text: f.explanation }),
+        el("ul", { class: "ledger" },
+          ...shown.map((e) => el("li", {}, el("span", { class: "loc", text: e.line ? `${e.file}:${e.line}  ` : `${e.file}  ` }), e.snippet || e.detail)),
+          f.count > shown.length ? el("li", { class: "more", text: L.more(f.count - shown.length) }) : null),
+      );
+    };
+    const sig = el("div", {}, el("h2", { text: L.signals }),
+      main.length ? el("ul", { class: "findings" }, ...main.map(findingNode)) : el("p", { class: "none", text: L.signalsNone }),
+      minor.length ? el("details", { class: "quiet" }, el("summary", { text: L.minor(minor.reduce((s, f) => s + f.count, 0)) }), el("ul", { class: "findings" }, ...minor.map(findingNode))) : null);
+    r.replaceChildren(head, caps, sig, el("p", { class: "disclaimer", text: d.disclaimer }));
+  }
+
+  function renderError(msg) {
+    $("#report").replaceChildren(el("p", { class: "error" }, el("strong", { text: T[lang].errTitle + ": " }), msg));
+  }
+
+  async function runExample(id, fresh = true) {
+    const e = ADDON_SENTRY_EXAMPLES.find((x) => x.id === id);
+    current = { kind: "example", id };
+    const files = new Map(Object.entries(e.files).map(([k, v]) => [k, new TextEncoder().encode(v)]));
+    const pkg = { name: e.name, files, hits: [], entries: files.size, totalBytes: [...files.values()].reduce((s, b) => s + b.length, 0) };
+    render(engine.toDict(engine.analyse(pkg), lang), true, fresh);
+    applyTexts();
+  }
+
+  async function runFile(file) {
+    if (!/\.zip$/i.test(file.name)) { renderError(T[lang].notZip); return; }
+    $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+    try {
+      const buffer = await file.arrayBuffer();
+      current = { kind: "file", name: file.name, buffer };
+      render(await engine.scanZip(buffer, file.name, lang), false, true);
+      applyTexts();
+    } catch (err) {
+      renderError(err && err.message ? err.message : String(err));
+    }
+  }
+
+  async function rerender() {
+    if (!current) return;
+    if (current.kind === "example") return runExample(current.id, false);
+    render(await engine.scanZip(current.buffer, current.name, lang), false, false);
+  }
+
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.lang;
+    try { localStorage.setItem("addon-sentry-lang", lang); } catch (e) {}
+    applyTexts();
+    rerender();
+  }));
+  $("#file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) runFile(f); e.target.value = ""; });
+  const tray = $("#tray");
+  ["dragenter", "dragover"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.remove("over"); }));
+  tray.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) runFile(f); });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => e.preventDefault());
+
+  applyTexts();
+  runExample(ADDON_SENTRY_EXAMPLES[0].id, false);
+})();
+</script>

