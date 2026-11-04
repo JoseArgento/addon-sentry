@@ -1,4 +1,4 @@
-// Runs the JavaScript engine on zips and prints {zip: {es: report, en: report}} as JSON.
+// Runs the JavaScript engine on zips (and WeakAuras strings in .txt files) and prints {zip: {es: report, en: report}} as JSON.
 const fs = require("fs");
 const path = require("path");
 const S = require(path.join(__dirname, "..", "web", "sentry.js"));
@@ -9,6 +9,11 @@ const engine = S.make(rules);
   for (const file of process.argv.slice(2)) {
     const buf = fs.readFileSync(file);
     try {
+      if (file.endsWith(".txt")) {
+        const text = buf.toString("utf8");
+        out[file] = { es: await engine.scanAura(text, "es"), en: await engine.scanAura(text, "en") };
+        continue;
+      }
       out[file] = { es: await engine.scanZip(buf, path.basename(file), "es"), en: await engine.scanZip(buf, path.basename(file), "en") };
     } catch (e) {
       out[file] = { error: e.message };

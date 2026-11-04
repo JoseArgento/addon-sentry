@@ -63,6 +63,22 @@ button:focus-visible, label:focus-within, a:focus-visible { outline: 3px solid v
 .examples { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--muted); }
 .examples button { font: 500 13px var(--mono); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); cursor: pointer; }
 .examples button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.paste { border-top: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); padding-top: 12px; }
+.paste summary { cursor: pointer; font: 700 15px var(--body); list-style: none; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.paste summary::-webkit-details-marker { display: none; }
+.paste summary::before { content: "+"; font: 700 15px var(--mono); color: var(--accent); width: 1ch; }
+.paste[open] summary::before { content: "−"; }
+.paste summary span { font: 400 14px var(--body); color: var(--muted); }
+.paste-body { display: grid; gap: 10px; margin-top: 10px; }
+.paste textarea {
+  width: 100%; min-height: 96px; resize: vertical; font: 12px/1.4 var(--mono); color: var(--ink); background: var(--sheet);
+  border: 1px solid var(--rule); border-radius: 8px; padding: 10px; overflow-wrap: anywhere;
+}
+.paste textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.paste-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.paste-row button { font: 700 14px var(--body); padding: 9px 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.paste-row button:disabled { opacity: .5; cursor: default; }
+.paste-row small { color: var(--muted); font-size: 13px; }
 .privacy { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--muted); margin: 0; }
 .privacy svg { flex: none; margin-top: 2px; }
 
@@ -115,6 +131,8 @@ details.quiet[open] summary { margin-bottom: 10px; }
 .how p, .how ul { margin: 0; color: var(--muted); font-size: 15px; }
 .how ul { padding-left: 18px; display: grid; gap: 4px; }
 footer { color: var(--muted); font-size: 13px; text-align: left; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.paste-title { font: 700 15px var(--body); color: var(--ink) !important; }
 </style>
 
 <div class="wrap">
@@ -141,6 +159,17 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         <input type="file" id="file" accept=".zip,application/zip">
       </label>
     </div>
+    <details class="paste" id="paste">
+      <summary><span class="paste-title" data-t="pasteTitle"></span><span data-t="pasteHint"></span></summary>
+      <div class="paste-body">
+        <label for="aura" class="visually-hidden" data-t="pasteLabel"></label>
+        <textarea id="aura" spellcheck="false" autocomplete="off" placeholder="!WA:2!..."></textarea>
+        <div class="paste-row">
+          <button type="button" id="aura-go" data-t="pasteGo" disabled></button>
+          <small data-t="pasteNote"></small>
+        </div>
+      </div>
+    </details>
     <div class="examples" id="examples"><span data-t="tryExample"></span></div>
     <p class="privacy">
       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
@@ -181,6 +210,14 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       choose: "Elegir archivo",
       tryExample: "Ejemplos:",
       privacy: "El archivo no sale de tu compu: se analiza dentro de esta página y no se sube a ningún lado.",
+      pasteTitle: "¿Es un aura de WeakAuras?",
+      pasteHint: "Pegá el string de importación antes de importarlo.",
+      pasteLabel: "String de importación de WeakAuras",
+      pasteGo: "Revisar aura",
+      pasteNote: "Lee el código del aura sin importarla ni ejecutarla. Acepta strings nuevos (!WA:2!) y viejos.",
+      auras: (n) => `${n} aura${n === 1 ? "" : "s"}`,
+      pieces: (n) => `${n} bloque${n === 1 ? "" : "s"} de código`,
+      canNoneAura: "Su código no usa nada sensible: no mueve oro, no manda mensajes, no ejecuta código armado en el momento.",
       example: "Ejemplo",
       scanned: "Analizado",
       files: "archivos", lines: "líneas de Lua", xml: "scripts en XML",
@@ -191,7 +228,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       minor: (n) => `${n} detalle${n === 1 ? "" : "s"} informativo${n === 1 ? "" : "s"}`,
       more: (n) => `y ${n} más`,
       busy: "Analizando…",
-      errTitle: "No se pudo analizar el archivo",
+      errTitle: "No se pudo analizar",
       notZip: "Elegí un archivo .zip.",
       howTitle: "Cómo funciona",
       howText: "Lee el código Lua del addon sin ejecutarlo y busca patrones conocidos de estafas y malware. Distingue lo que el addon puede hacer (muchos addons legítimos mueven oro o mandan mensajes) de las combinaciones que no tienen explicación inocente.",
@@ -203,6 +240,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         "Nombres de funciones armados de a pedazos para no llamar la atención",
         "Ejecutables, rutas que escapan de la carpeta y archivos con contraseña",
         "Addons que juntan estadísticas de otros jugadores",
+        "Auras de WeakAuras que mandan tu oro, susurran tus datos o usan lo que WeakAuras bloquea",
       ],
       limitsTitle: "Lo que no puede",
       limitsText: "Es un chequeo automático: no prueba que un addon sea seguro y una advertencia no prueba mala intención. Bajá los addons de su página oficial y desconfiá de quien te pase uno por susurro o Discord.",
@@ -215,6 +253,14 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       choose: "Choose file",
       tryExample: "Examples:",
       privacy: "The file never leaves your computer: it is checked inside this page and not uploaded anywhere.",
+      pasteTitle: "Is it a WeakAuras aura?",
+      pasteHint: "Paste the import string before you import it.",
+      pasteLabel: "WeakAuras import string",
+      pasteGo: "Check aura",
+      pasteNote: "Reads the aura's code without importing or running it. Takes new (!WA:2!) and old strings.",
+      auras: (n) => `${n} aura${n === 1 ? "" : "s"}`,
+      pieces: (n) => `${n} piece${n === 1 ? "" : "s"} of code`,
+      canNoneAura: "Its code uses nothing sensitive: does not move gold, send messages or run code built at runtime.",
       example: "Example",
       scanned: "Checked",
       files: "files", lines: "lines of Lua", xml: "XML scripts",
@@ -225,7 +271,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       minor: (n) => `${n} informational detail${n === 1 ? "" : "s"}`,
       more: (n) => `and ${n} more`,
       busy: "Checking…",
-      errTitle: "The file could not be checked",
+      errTitle: "Could not check it",
       notZip: "Choose a .zip file.",
       howTitle: "How it works",
       howText: "It reads the addon's Lua code without running it and looks for known scam and malware patterns. It separates what an addon can do (many legitimate addons move gold or send messages) from combinations with no innocent explanation.",
@@ -237,6 +283,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         "Function names built piece by piece to avoid notice",
         "Executables, paths that escape the folder and password-protected files",
         "Addons that collect other players' statistics",
+        "WeakAuras auras that mail your gold, whisper your data or use what WeakAuras blocks",
       ],
       limitsTitle: "What it cannot do",
       limitsText: "It is an automatic check: it cannot prove an addon is safe, and a warning is not proof of bad intent. Download addons from their official page and be wary of anyone who sends you one by whisper or Discord.",
@@ -247,7 +294,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   const engine = AddonSentry.make(ADDON_SENTRY_RULES);
   let lang = "es";
   try { const saved = localStorage.getItem("addon-sentry-lang"); if (saved === "en" || saved === "es") lang = saved; } catch (e) {}
-  let current = null; // { kind: "example"|"file", name, buffer|exampleId }
+  let current = null; // { kind: "example"|"file"|"aura", name, buffer|exampleId|text }
   const $ = (s) => document.querySelector(s);
   const el = (tag, attrs, ...kids) => {
     const n = document.createElement(tag);
@@ -279,20 +326,23 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     const level = d.verdict.level;
     const a = d.addons[0] || {};
     const title = a.title || d.target;
+    const isAura = "auras" in d.stats;
     const bits = [a.version && a.version.indexOf("@") < 0 ? "v" + a.version : null, a.author].filter(Boolean).join(" · ");
     const st = d.stats;
     const head = el("div", { class: "sheet-head" },
       el("div", {},
         el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
         el("p", { class: "target", text: title }),
-        el("p", { class: "meta", text: [bits, `${st.files} ${L.files}`, `${st.lines.toLocaleString(lang)} ${L.lines}`, st.xml_scripts ? `${st.xml_scripts} ${L.xml}` : null].filter(Boolean).join(" · ") }),
+        el("p", { class: "meta", text: (isAura
+          ? [a.version, L.auras(st.auras), L.pieces(st.code_pieces), `${st.lines.toLocaleString(lang)} ${L.lines}`]
+          : [bits, `${st.files} ${L.files}`, `${st.lines.toLocaleString(lang)} ${L.lines}`, st.xml_scripts ? `${st.xml_scripts} ${L.xml}` : null]).filter(Boolean).join(" · ") }),
       ),
       el("div", { class: `stamp lvl-${level}${fresh ? " fresh" : ""}`, role: "img", "aria-label": d.verdict.text }, d.verdict.text, el("small", { text: "addon-sentry " + d.tool.version })),
     );
     const caps = el("div", {}, el("h2", { text: L.can }),
       d.capabilities.length
         ? el("ul", { class: "caps" }, ...d.capabilities.map((c) => el("li", {}, c.text, el("b", { text: "×" + c.count }))))
-        : el("p", { class: "none", text: L.canNone }));
+        : el("p", { class: "none", text: isAura ? L.canNoneAura : L.canNone }));
     const main = d.findings.filter((f) => f.severity !== "info");
     const minor = d.findings.filter((f) => f.severity === "info");
     const findingNode = (f) => {
@@ -319,6 +369,11 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   async function runExample(id, fresh = true) {
     const e = ADDON_SENTRY_EXAMPLES.find((x) => x.id === id);
     current = { kind: "example", id };
+    if (e.aura) {
+      render(await engine.scanAura(e.aura, lang), true, fresh);
+      applyTexts();
+      return;
+    }
     const files = new Map(Object.entries(e.files).map(([k, v]) => [k, new TextEncoder().encode(v)]));
     const pkg = { name: e.name, files, hits: [], entries: files.size, totalBytes: [...files.values()].reduce((s, b) => s + b.length, 0) };
     render(engine.toDict(engine.analyse(pkg), lang), true, fresh);
@@ -338,9 +393,21 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     }
   }
 
+  async function runAura(text) {
+    $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+    try {
+      current = { kind: "aura", text };
+      render(await engine.scanAura(text, lang), false, true);
+      applyTexts();
+    } catch (err) {
+      renderError(err && err.message ? err.message : String(err));
+    }
+  }
+
   async function rerender() {
     if (!current) return;
     if (current.kind === "example") return runExample(current.id, false);
+    if (current.kind === "aura") return runAura(current.text);
     render(await engine.scanZip(current.buffer, current.name, lang), false, false);
   }
 
@@ -355,6 +422,10 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   ["dragenter", "dragover"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.remove("over"); }));
   tray.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) runFile(f); });
+  const auraBox = $("#aura"), auraGo = $("#aura-go");
+  auraBox.addEventListener("input", () => { auraGo.disabled = !auraBox.value.trim(); });
+  auraGo.addEventListener("click", () => { if (auraBox.value.trim()) runAura(auraBox.value); });
+  auraBox.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && auraBox.value.trim()) runAura(auraBox.value); });
   window.addEventListener("dragover", (e) => e.preventDefault());
   window.addEventListener("drop", (e) => e.preventDefault());
 

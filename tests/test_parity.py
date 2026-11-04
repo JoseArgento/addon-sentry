@@ -48,8 +48,38 @@ def extra_zips(tmp: Path) -> list[Path]:
     return out
 
 
+def aura_strings(tmp: Path) -> list[Path]:
+    """The WeakAuras fixtures plus broken variants: cut, junk after the data, bad characters, other addons."""
+    src = sorted((FIX / "auras").glob("*.txt"))
+    clean = (FIX / "auras" / "clean.txt").read_text(encoding="utf-8").strip()
+    variants = {
+        "cut": clean[: len(clean) // 2],
+        "junk": clean + "aaaa",
+        "badchar": clean[:40] + "$" + clean[41:],
+        "plater": "!PLATER:2!abc",
+        "notwa": "hello there",
+        "empty": "!WA:2!",
+        "spaces": "  \n" + clean + "\t \n",
+        "bigversion": "!WA:9!" + clean[6:],
+        "v0-garbage": "abcdefghijklmnop",
+        "v0-cut": (FIX / "auras" / "legacy_v0_huffman.txt").read_text(encoding="utf-8").strip()[:300],
+    }
+    out = list(src)
+    real = Path(os.environ.get("ADDON_SENTRY_REAL_AURAS", "/nonexistent"))
+    if real.is_dir():
+        out += sorted(real.rglob("*.txt"))
+    for name, text in variants.items():
+        p = tmp / f"aura-{name}.txt"
+        p.write_text(text, encoding="utf-8")
+        out.append(p)
+    return out
+
+
 def python_reports(path: Path) -> dict:
     try:
+        if path.suffix == ".txt":
+            text = path.read_text(encoding="utf-8")
+            return {"es": engine.scan_aura(text).to_dict("es"), "en": engine.scan_aura(text).to_dict("en")}
         r = engine.scan_bytes(path.read_bytes(), path.name)
     except engine.ScanError as e:
         return {"error": str(e)}
@@ -62,10 +92,11 @@ def test_rules_json_is_current():
 
 
 def test_engines_agree(tmp_path):
-    zips = [zip_folder(d, tmp_path / f"{d.name}.zip") for d in sorted(FIX.iterdir()) if d.is_dir()]
+    zips = [zip_folder(d, tmp_path / f"{d.name}.zip") for d in sorted(FIX.iterdir()) if d.is_dir() and d.name != "auras"]
     if REAL.is_dir():
         zips += [zip_folder(d, tmp_path / f"real-{d.name}.zip") for d in sorted(REAL.iterdir()) if d.is_dir()]
     zips += extra_zips(tmp_path)
+    zips += aura_strings(tmp_path)
     proc = subprocess.run(
         ["node", str(ROOT / "tests" / "parity_runner.js"), *map(str, zips)], capture_output=True, text=True, timeout=600, check=True
     )

@@ -316,6 +316,67 @@ SEVERITY_NAMES = {
     "es": {"info": "info", "low": "bajo", "medium": "medio", "high": "alto", "critical": "crítico"},
 }
 
+# What WeakAuras blocks inside aura code (WeakAuras/AuraEnvironment.lua: blockedFunctions,
+# blockedNamespaceFunctions, blockedTables). The aura gets an empty stand-in and the player a warning.
+AURA_BLOCKED: frozenset[str] = frozenset(
+    {
+        "getfenv",
+        "setfenv",
+        "loadstring",
+        "pcall",
+        "xpcall",
+        "SendMail",
+        "SetTradeMoney",
+        "AddTradeMoney",
+        "PickupTradeMoney",
+        "PickupPlayerMoney",
+        "TradeFrame",
+        "MailFrame",
+        "EnumerateFrames",
+        "RunScript",
+        "AcceptTrade",
+        "SetSendMailMoney",
+        "DevTools_DumpCommand",
+        "hash_SlashCmdList",
+        "RegisterNewSlashCommand",
+        "CreateMacro",
+        "EditMacro",
+        "DeleteMacro",
+        "SetBindingMacro",
+        "GuildDisband",
+        "GuildUninvite",
+        "securecall",
+        "DeleteCursorItem",
+        "AbandonSkill",
+        "PetAbandon",
+        "ChatEdit_SendText",
+        "ChatEdit_ActivateChat",
+        "ChatEdit_ParseText",
+        "ChatEdit_OnEnterPressed",
+        "GetButtonMetatable",
+        "GetEditBoxMetatable",
+        "GetFontStringMetatable",
+        "GetFrameMetatable",
+        "C_PetInfo.PetAbandon",
+        "C_GuildInfo.Disband",
+        "C_GuildInfo.Uninvite",
+        "C_TradeInfo.AddTradeMoney",
+        "C_TradeInfo.SetTradeMoney",
+        "C_TradeInfo.PickupTradeMoney",
+        "SlashCmdList",
+        "SendMailMailButton",
+        "SendMailMoneyGold",
+        "MailFrameTab2",
+        "DEFAULT_CHAT_FRAME",
+        "ChatFrame1",
+        "WeakAurasSaved",
+        "WeakAurasOptions",
+        "WeakAurasOptionsSaved",
+        "ItemRackUser",
+        "ItemRackEvents",
+    }
+)
+
 FINDINGS: dict[str, dict] = {
     # package
     "PKG_EXECUTABLE": {
@@ -578,6 +639,17 @@ FINDINGS: dict[str, dict] = {
             "Es normal en addons de barras y macros. Una macro puede ejecutar cualquier comando cuando apretás la tecla.",
         ),
     },
+    "AURA_BLOCKED": {
+        "severity": "medium",
+        "en": (
+            "Uses something WeakAuras blocks",
+            "WeakAuras does not let aura code use this: it hands the aura an empty stand-in and warns you. A normal aura has no need for it. Either the code is old, or it tries exactly what WeakAuras blocks to stop scams (mail, trade, guild, macros, chat, escaping its sandbox).",
+        ),
+        "es": (
+            "Usa cosas que WeakAuras bloquea",
+            "WeakAuras no deja que el código de un aura use esto: le da algo vacío en su lugar y te avisa. Un aura normal no lo necesita. O es código viejo, o intenta justo lo que WeakAuras bloquea para frenar estafas (correo, comercio, hermandad, macros, chat, salirse de su sandbox).",
+        ),
+    },
     "URL": {
         "severity": "info",
         "en": (
@@ -607,6 +679,8 @@ DISCLAIMER = {
 
 def export() -> dict:
     """Everything the JavaScript engine needs, so both engines share one source of truth."""
+    from . import auras as _auras
+
     return {
         "capabilities": {k: {"api": sorted(v["api"]), "en": v["en"], "es": v["es"]} for k, v in CAPABILITIES.items()},
         "sensitive_hook_targets": sorted(SENSITIVE_HOOK_TARGETS),
@@ -622,4 +696,9 @@ def export() -> dict:
         "findings": FINDINGS,
         "verdicts": VERDICTS,
         "disclaimer": DISCLAIMER,
+        "aura": {
+            "blocked": sorted(AURA_BLOCKED),
+            "code_keys": sorted(_auras.CODE_KEYS),
+            "send_chat_types": sorted(_auras.SEND_CHAT_TYPES),
+        },
     }

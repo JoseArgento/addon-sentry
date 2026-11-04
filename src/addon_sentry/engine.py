@@ -16,7 +16,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import __version__, rules
+from . import __version__, auras, rules
 from .lexer import NAME, NUMBER, OP, STRING, Token
 from .lua import FileScan, scan
 
@@ -725,7 +725,21 @@ def analyse(pkg: Package) -> Report:
         for path in sorted(p for p in pkg.files if p.lower().endswith(".lua") and p not in loaded):
             facts.hit("PKG_UNLOADED_LUA", Evidence(path, 0, "not listed"))
 
-    # ---- combinations
+    findings, top = _combine(facts, saved)
+    addons = [{k: v for k, v in t.items()} for t in sorted(tocs, key=lambda t: t["file"])]
+    stats = {
+        "files": pkg.entries,
+        "bytes": pkg.total_bytes,
+        "lua_files": sum(1 for p in pkg.files if p.lower().endswith(".lua")),
+        "xml_scripts": sum(1 for u in units if "#" in u.path),
+        "lines": sum(len(u.lines) for u in units),
+    }
+    caps = {c: facts.caps.get(c, []) for c in rules.CAPABILITIES}
+    return Report(pkg.name, top, caps, findings, addons, stats)
+
+
+def _combine(facts: Facts, saved: bool) -> tuple[list[Hit], str]:
+    """Rules that need several facts together, then sort the findings."""
     for path in facts.dynamic_code:
         if path in facts.remote_input:
             for ev in facts.dynamic_code[path][:3]:
@@ -761,16 +775,7 @@ def analyse(pkg: Package) -> Report:
     order = {s: i for i, s in enumerate(rules.SEVERITIES)}
     findings = sorted(facts.hits.values(), key=lambda h: (-order[rules.FINDINGS[h.id]["severity"]], h.id))
     top = max((rules.FINDINGS[h.id]["severity"] for h in findings), key=lambda s: order[s], default="info")
-    addons = [{k: v for k, v in t.items()} for t in sorted(tocs, key=lambda t: t["file"])]
-    stats = {
-        "files": pkg.entries,
-        "bytes": pkg.total_bytes,
-        "lua_files": sum(1 for p in pkg.files if p.lower().endswith(".lua")),
-        "xml_scripts": sum(1 for u in units if "#" in u.path),
-        "lines": sum(len(u.lines) for u in units),
-    }
-    caps = {c: facts.caps.get(c, []) for c in rules.CAPABILITIES}
-    return Report(pkg.name, top, caps, findings, addons, stats)
+    return findings, top
 
 
 def scan_path(path: str | Path) -> Report:
@@ -782,3 +787,47 @@ def scan_path(path: str | Path) -> Report:
 
 def scan_bytes(data: bytes, name: str = "addon.zip") -> Report:
     return analyse(read_zip(data, name))
+
+
+# --------------------------------------------------------------------------- WeakAuras strings
+
+
+def scan_aura(text: str) -> Report:
+    """Scans the Lua inside a WeakAuras import string, without importing or running it."""
+    try:
+        exp = auras.read(text)
+    except auras.AuraError as e:
+        raise ScanError(str(e)) from e
+    units = []
+    for c in exp.code:
+        # "#" separates inline scripts from their file elsewhere in the engine; keep it out of the label.
+        units.append(Unit(f"{c.aura.replace('#', '＃')} › {c.path}", c.code))
+    for u in units:
+        u.scan = scan(u.path, u.source)
+        u.lines = u.source.split("\n")
+    facts = Facts()
+    for u in units:
+        facts.own_dialogs |= _created_dialogs(u.scan.tokens)
+    for u in units:
+        analyse_unit(u, facts, set())
+        for r in u.scan.refs:
+            name = r.name if r.name in rules.AURA_BLOCKED else r.name.split(".", 1)[0]
+            if name in rules.AURA_BLOCKED:
+                facts.hit("AURA_BLOCKED", _ev(u, r.tok, name))
+    for aura, path, detail in exp.chat:
+        if len(facts.caps["chat"]) < 40:
+            facts.caps["chat"].append(Evidence(f"{aura.replace('#', '＃')} › {path}", 0, detail))
+    findings, top = _combine(facts, False)
+    meta = {"file": f"WeakAuras ({exp.format})", "title": exp.auras[0][:120]}
+    if exp.addon_version:
+        meta["version"] = f"WeakAuras {exp.addon_version[:40]}"
+    if exp.urls:
+        meta["url"] = exp.urls[0][:200]
+    stats = {
+        "auras": len(exp.auras),
+        "code_pieces": len(units),
+        "bytes": len(text.encode("utf-8")),
+        "lines": sum(len(u.lines) for u in units),
+    }
+    caps = {c: facts.caps.get(c, []) for c in rules.CAPABILITIES}
+    return Report(exp.auras[0], top, caps, findings, [meta], stats)

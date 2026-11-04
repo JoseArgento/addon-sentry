@@ -844,6 +844,21 @@
         for (const path of [...pkg.files.keys()].filter((p) => p.toLowerCase().endsWith(".lua") && !loaded.has(p)).sort())
           facts.hit("PKG_UNLOADED_LUA", { file: path, line: 0, detail: "not listed", snippet: "" });
       }
+      const [findings, top] = combine(facts, saved);
+      const addons = [...tocs].sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
+      const stats2 = {
+        files: pkg.entries,
+        bytes: pkg.totalBytes,
+        lua_files: [...pkg.files.keys()].filter((p) => p.toLowerCase().endsWith(".lua")).length,
+        xml_scripts: units.filter((u) => u.path.includes("#")).length,
+        lines: units.reduce((a, u) => a + u.lines.length, 0),
+      };
+      const caps = {};
+      for (const c of Object.keys(R.capabilities)) caps[c] = facts.caps.get(c) || [];
+      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2 };
+    }
+
+    function combine(facts, saved) {
       for (const [path, evs] of facts.dynamicCode) {
         if (facts.remoteInput.has(path)) for (const e of evs.slice(0, 3)) facts.hit("REMOTE_CODE", e);
         else if (facts.remoteInput.size) for (const e of evs.slice(0, 3)) facts.hit("LISTENS_AND_RUNS", e);
@@ -868,17 +883,7 @@
       });
       let top = "info";
       for (const h of findings) { const s = R.findings[h.id].severity; if (ORDER[s] > ORDER[top]) top = s; }
-      const addons = [...tocs].sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0));
-      const stats2 = {
-        files: pkg.entries,
-        bytes: pkg.totalBytes,
-        lua_files: [...pkg.files.keys()].filter((p) => p.toLowerCase().endsWith(".lua")).length,
-        xml_scripts: units.filter((u) => u.path.includes("#")).length,
-        lines: units.reduce((a, u) => a + u.lines.length, 0),
-      };
-      const caps = {};
-      for (const c of Object.keys(R.capabilities)) caps[c] = facts.caps.get(c) || [];
-      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2 };
+      return [findings, top];
     }
 
     function toDict(report, lang) {
@@ -909,7 +914,526 @@
       return toDict(analyse(pkg), lang || "es");
     }
 
-    return { scanZip, readZip, analyse, toDict };
+    // -------------------------------------------------------------- WeakAuras strings (port of auras.py)
+
+    const AURA = R.aura;
+    const AURA_BLOCKED = new Set(AURA.blocked);
+    const CODE_KEYS = new Set(AURA.code_keys);
+    const SEND_CHAT = new Set(AURA.send_chat_types);
+    const MAX_INPUT_CHARS = 8 * 1024 * 1024, MAX_INFLATED = 64 * 1024 * 1024, MAX_OBJECTS = 2000000, MAX_DEPTH = 120;
+    const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789()";
+    const SIX = new Map([...ALPHABET].map((c, i) => [c.charCodeAt(0), i]));
+    let luaSpace = " ";
+    for (let c = 0; c < 32; c++) luaSpace += String.fromCharCode(c);
+    luaSpace += "\x7f";
+    const GENERIC_KEY = /custom|func$/i;
+    const CODE_LIKE = /(?<![A-Za-z0-9_])(?:function|return)(?![A-Za-z0-9_])/;
+    const DEC = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
+    const HEX = /^[+-]?0[xX][0-9a-fA-F]+$/;
+    const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+    const DAMAGED = "cannot decompress: the string is damaged or cut short";
+    const OTHER_FORMATS = [["!PLATER:", "Plater"], ["!E1!", "ElvUI"], ["!MDT", "Mythic Dungeon Tools"]];
+    const utf8 = new TextDecoder("utf-8");
+    const cpSlice = (s, n) => Array.from(s).slice(0, n).join("");  // Python slices by code point
+    // Lua booleans as table keys (a Map keeps them apart from numbers already; these are just markers)
+    const LUA_TRUE = { luaBool: true }, LUA_FALSE = { luaBool: false };
+
+    function decodeForPrint(s) {
+      s = pyStrip(s, luaSpace);
+      if (s.length === 1) return null;
+      const out = [];
+      let i = 0;
+      const n = s.length;
+      while (i + 3 < n) {
+        const x = [0, 1, 2, 3].map((j) => SIX.get(s.charCodeAt(i + j)));
+        if (x.includes(undefined)) return null;
+        const cache = x[0] + x[1] * 64 + x[2] * 4096 + x[3] * 262144;
+        out.push(cache & 255, (cache >> 8) & 255, cache >> 16);
+        i += 4;
+      }
+      let cache = 0, bits = 0;
+      while (i < n) {
+        const x = SIX.get(s.charCodeAt(i));
+        if (x === undefined) return null;
+        cache += x * 2 ** bits;
+        bits += 6;
+        i++;
+      }
+      while (bits >= 8) {
+        out.push(cache % 256);
+        cache = Math.floor(cache / 256);
+        bits -= 8;
+      }
+      return new Uint8Array(out);
+    }
+
+    async function inflateLimited(bytes) {
+      const ds = new DecompressionStream("deflate-raw");
+      const writer = ds.writable.getWriter();
+      writer.write(bytes).catch(() => {});
+      writer.close().catch(() => {});
+      const reader = ds.readable.getReader();
+      const parts = [];
+      let total = 0;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          total += value.length;
+          if (total > MAX_INFLATED) {
+            reader.cancel().catch(() => {});
+            throw new ScanError("the string unpacks to more than 64 MB; refusing to read it");
+          }
+          parts.push(value);
+        }
+      } catch (e) {
+        if (e instanceof ScanError) throw e;
+        throw new ScanError(DAMAGED);
+      }
+      const out = new Uint8Array(total);
+      let p = 0;
+      for (const part of parts) { out.set(part, p); p += part.length; }
+      return out;
+    }
+
+    // Pre-2018 strings: WeakAuras' decodeB64 + LibCompress (LZW or Huffman) + AceSerializer
+    const V0_ERROR = "this is not a WeakAuras import string (they start with !WA:2!)";
+    function decodeB64v0(s) {
+      const out = [];
+      let bits = 0, nbits = 0, i = 0;
+      const n = s.length;
+      for (;;) {
+        if (nbits >= 8) { out.push(bits % 256); bits = Math.floor(bits / 256); nbits -= 8; }
+        const x = i < n ? SIX.get(s.charCodeAt(i)) || 0 : 0;
+        bits += x * 2 ** nbits;
+        nbits += 6;
+        if (i >= n) break;
+        i++;
+      }
+      return new Uint8Array(out);
+    }
+    function lcNumber(d, i) {
+      let a = d[i];
+      if (a > 249) {
+        a = 256 - a;
+        if (i + a >= d.length) throw new ScanError(V0_ERROR);
+        let r = 0;
+        for (let k = i + a; k > i; k--) r = r * 255 + d[k] - 1;
+        return [r, a + 1];
+      }
+      return [a, 1];
+    }
+    function concatBytes(a, b) { const out = new Uint8Array(a.length + b.length); out.set(a); out.set(b, a.length); return out; }
+    function lcLzw(d) {
+      d = d.subarray(1);
+      if (!d.length) throw new ScanError(V0_ERROR);
+      const table = new Map();
+      for (let i = 0; i < 256; i++) table.set(i, Uint8Array.of(i));
+      let size = 256;
+      let [k, step] = lcNumber(d, 0);
+      let t = step;
+      if (!table.has(k)) throw new ScanError(V0_ERROR);
+      let w = table.get(k);
+      const parts = [w];
+      let total = w.length;
+      while (t < d.length) {
+        [k, step] = lcNumber(d, t);
+        t += step;
+        const got = table.get(k);
+        const entry = got && got.length ? got : concatBytes(w, w.subarray(0, 1));
+        parts.push(entry);
+        total += entry.length;
+        if (total > MAX_INFLATED) throw new ScanError("the string unpacks to more than 64 MB; refusing to read it");
+        table.set(size++, concatBytes(w, entry.subarray(0, 1)));
+        w = entry;
+      }
+      const out = new Uint8Array(total);
+      let p = 0;
+      for (const part of parts) { out.set(part, p); p += part.length; }
+      return out;
+    }
+    function lcUnescape(code, codeLen) {
+      let out = 0n, l = 0n;
+      for (let i = 0n; i < codeLen; i++) {
+        if ((code >> i) & 1n) { out |= 1n << l; i++; }
+        l++;
+      }
+      return [out, l];
+    }
+    function lcHuffman(d) {
+      if (d.length < 5) throw new ScanError(V0_ERROR);
+      const numSymbols = d[1] + 1;
+      const orig = d[2] + d[3] * 256 + d[4] * 65536;
+      if (orig === 0) return new Uint8Array(0);
+      // BigInt bit queue: codes may be up to 32 bits plus the stop bits
+      let bits = 0n, nbits = 0n, i = 5, state = 0, symbol = 0, n = 0;
+      const codes = new Map();
+      let minLen = 1000n, maxLen = 0n;
+      while (n < numSymbols) {
+        if (i >= d.length) throw new ScanError(V0_ERROR);
+        bits |= BigInt(d[i]) << nbits;
+        nbits += 8n;
+        if (state === 0) { symbol = Number(bits & 255n); bits >>= 8n; nbits -= 8n; state = 1; }
+        else {
+          for (let k = 0n; k < nbits - 1n; k++) {
+            if (((bits >> k) & 3n) === 3n) {
+              if (k > 32n) throw new ScanError(V0_ERROR);
+              const code = bits & ((1n << k) - 1n);
+              bits >>= k + 2n;
+              nbits -= k + 2n;
+              const [c, cl] = lcUnescape(code, k);
+              codes.set(`${cl}:${c}`, symbol);
+              if (cl < minLen) minLen = cl;
+              if (cl > maxLen) maxLen = cl;
+              n++;
+              state = 0;
+              break;
+            }
+          }
+        }
+        i++;
+      }
+      bits &= 0xffffffffn;
+      const out = new Uint8Array(orig);
+      let size = 0, len = minLen;
+      for (;;) {
+        if (len <= nbits) {
+          const sym = codes.get(`${len}:${bits & ((1n << len) - 1n)}`);
+          if (sym !== undefined) {
+            out[size++] = sym;
+            if (size >= orig) break;
+            bits >>= len;
+            nbits -= len;
+            len = minLen;
+          } else {
+            len++;
+            if (len > maxLen) throw new ScanError(V0_ERROR);
+          }
+        } else {
+          bits |= BigInt(i < d.length ? d[i] : 0) << nbits;
+          nbits += 8n;
+          if (i > d.length) break;
+          i++;
+        }
+      }
+      return out.subarray(0, size);
+    }
+    function libcompressDecompress(d) {
+      if (!d.length) throw new ScanError(V0_ERROR);
+      if (d[0] === 1) return d.subarray(1);
+      if (d[0] === 2) return lcLzw(d);
+      if (d[0] === 3) return lcHuffman(d);
+      throw new ScanError(V0_ERROR);
+    }
+
+    function luaNumber(s) {
+      if (HEX.test(s)) return parseInt(s, 16);
+      if (DEC.test(s)) return Number(s);
+      throw new ScanError("cannot deserialize: bad number");
+    }
+
+    function luaSet(t, k, v) {
+      if (k === null || k === undefined || (typeof k === "number" && Number.isNaN(k))) throw new ScanError("cannot deserialize: bad table key");
+      if (k === true) k = LUA_TRUE;
+      else if (k === false) k = LUA_FALSE;
+      if (v === null || v === undefined) t.delete(k);
+      else t.set(k, v);
+    }
+
+    function deserializeLibSerialize(d) {
+      let p = 0, count = 0, depth = 0;
+      const strings = [], tables = [];
+      const bytes = (n) => {
+        if (p + n > d.length) throw new ScanError("cannot deserialize: data ends early");
+        const b = d.subarray(p, p + n);
+        p += n;
+        return b;
+      };
+      const int = (n) => { let v = 0; for (const b of bytes(n)) v = v * 256 + b; return v; };
+      const string = (n) => { const v = utf8.decode(bytes(n)); if (n > 2) strings.push(v); return v; };
+      const table = (entries, value) => {
+        if (!value) { value = new Map(); tables.push(value); }
+        for (let i = 0; i < entries; i++) { const k = obj(); const v = obj(); luaSet(value, k, v); }
+        return value;
+      };
+      const array = (entries, value) => {
+        if (!value) { value = new Map(); tables.push(value); }
+        for (let i = 1; i <= entries; i++) luaSet(value, i, obj());
+        return value;
+      };
+      const mixed = (a, b) => { const value = new Map(); tables.push(value); array(a, value); table(b, value); return value; };
+      const ref = (refs, n) => { const i = int(n); if (i < 1 || i > refs.length) throw new ScanError("cannot deserialize: bad reference"); return refs[i - 1]; };
+      function obj() {
+        if (++count > MAX_OBJECTS) throw new ScanError("too many values in the string");
+        if (++depth > MAX_DEPTH) throw new ScanError("tables nested too deep");
+        try { return one(); } finally { depth--; }
+      }
+      function one() {
+        const v = int(1);
+        if (v % 2 === 1) return (v - 1) / 2;
+        if (v % 4 === 2) {
+          let typ = (v - 2) / 4;
+          const c = Math.floor(typ / 4);
+          typ %= 4;
+          if (typ === 0) return string(c);
+          if (typ === 1) return table(c);
+          if (typ === 2) return array(c);
+          return mixed((c % 4) + 1, Math.floor(c / 4) + 1);
+        }
+        if (v % 8 === 4) {
+          const packed = int(1) * 256 + v;
+          return v % 16 === 12 ? -((packed - 12) / 16) : (packed - 4) / 16;
+        }
+        const typ = v / 8;
+        if (typ === 0) return null;
+        if (typ >= 1 && typ <= 8) { const n = int([2, 3, 4, 7][Math.floor((typ - 1) / 2)]); return typ % 2 === 0 ? -n : n; }
+        if (typ === 9) { const b = bytes(8); return new DataView(b.buffer, b.byteOffset, 8).getFloat64(0, false); }
+        if (typ === 10 || typ === 11) {
+          const f = luaNumber(String.fromCharCode(...bytes(int(1))));
+          return typ === 11 ? -f : f;
+        }
+        if (typ === 12) return true;
+        if (typ === 13) return false;
+        if (typ >= 14 && typ <= 16) return string(int(typ - 13));
+        if (typ >= 17 && typ <= 19) return table(int(typ - 16));
+        if (typ >= 20 && typ <= 22) return array(int(typ - 19));
+        if (typ >= 23 && typ <= 25) { const size = typ - 22; const a = int(size); const b = int(size); return mixed(a, b); }
+        if (typ >= 26 && typ <= 28) return ref(strings, typ - 25);
+        if (typ >= 29 && typ <= 31) return ref(tables, typ - 28);
+        throw new ScanError("cannot deserialize: unknown type");
+      }
+      const version = int(1);
+      if (version > 2) throw new ScanError("cannot deserialize: unknown LibSerialize version");
+      const out = [];
+      while (p < d.length) out.push(obj());
+      return out;
+    }
+
+    function deserializeAce(bytesIn) {
+      let text = "";
+      for (let i = 0; i < bytesIn.length; i += 8192) text += String.fromCharCode(...bytesIn.subarray(i, i + 8192));
+      text = text.replace(/[\x00-\x1f\x7f ]/g, "");
+      const toks = [...text.matchAll(/(\^.)([^^]*)/g)].map((m) => [m[1], m[2]]);
+      let ti = 0;
+      const next = () => (ti < toks.length ? toks[ti++] : [null, null]);
+      const first = next();
+      if (first[0] !== "^1") throw new ScanError("cannot deserialize: not AceSerializer data");
+      let counter = 0;
+      const unescape = (m) => {
+        const c = m[1];
+        if (c < "@") throw new ScanError("cannot deserialize: bad escape");
+        if (c < "z") return String.fromCharCode(c.charCodeAt(0) - 64);
+        const out = { z: "\x1e", "{": "\x7f", "|": "~", "}": "^" }[c];
+        if (out === undefined) throw new ScanError("cannot deserialize: bad escape");
+        return out;
+      };
+      function value(ctl, data, depth) {
+        if (++counter > MAX_OBJECTS) throw new ScanError("too many values in the string");
+        if (depth > MAX_DEPTH) throw new ScanError("tables nested too deep");
+        if (ctl === "^S") {
+          const raw = data.replace(/~./g, unescape);
+          return utf8.decode(Uint8Array.from(raw, (ch) => ch.charCodeAt(0)));
+        }
+        if (ctl === "^N") {
+          if (data === "1.#INF" || data === "inf") return Infinity;
+          if (data === "-1.#INF" || data === "-inf") return -Infinity;
+          return luaNumber(data);
+        }
+        if (ctl === "^F") {
+          const [ctl2, e] = next();
+          if (ctl2 !== "^f") throw new ScanError("cannot deserialize: bad float");
+          const mant = luaNumber(data), ex = luaNumber(e);
+          return mant === 0 ? 0 : mant * 2 ** ex;
+        }
+        if (ctl === "^B") return true;
+        if (ctl === "^b") return false;
+        if (ctl === "^Z") return null;
+        if (ctl === "^T") {
+          const t = new Map();
+          for (;;) {
+            const [kc, kd] = next();
+            if (kc === null) throw new ScanError("cannot deserialize: table not closed");
+            if (kc === "^t") return t;
+            const k = value(kc, kd, depth + 1);
+            const [vc, vd] = next();
+            if (vc === null) throw new ScanError("cannot deserialize: table not closed");
+            const v = value(vc, vd, depth + 1);
+            if (k === null || v === null) throw new ScanError("cannot deserialize: bad table");
+            luaSet(t, k, v);
+          }
+        }
+        throw new ScanError("cannot deserialize: bad control code");
+      }
+      const out = [];
+      for (;;) {
+        const [ctl, data] = next();
+        if (ctl === null) break;
+        if (ctl === "^^") return out;
+        out.push(value(ctl, data, 0));
+      }
+      throw new ScanError("cannot deserialize: AceSerializer end marker missing");
+    }
+
+    async function auraDecode(text) {
+      if (Array.from(text).length > MAX_INPUT_CHARS) throw new ScanError("the string is longer than 8 MB");
+      const s = pyStrip(text, luaSpace);
+      for (const [prefix, name] of OTHER_FORMATS) {
+        if (s.startsWith(prefix)) throw new ScanError(`this looks like a ${name} string; only WeakAuras strings are supported for now`);
+      }
+      const m = /^!WA:(\d+)!([\s\S]+)$/.exec(s);
+      let version, body;
+      if (m) { version = parseInt(m[1], 10); body = m[2]; }
+      else if (s.startsWith("!")) { version = 1; body = s.slice(1); }
+      else { version = 0; body = s; }
+      if (version === 0) {
+        let values;
+        try { values = deserializeAce(libcompressDecompress(decodeB64v0(body))); }
+        catch (e) { if (e instanceof ScanError) throw new ScanError(V0_ERROR); throw e; }
+        if (!values.length || !(values[0] instanceof Map)) throw new ScanError(V0_ERROR);
+        return ["WA:0", values[0]];
+      }
+      const raw = decodeForPrint(body);
+      if (raw === null) throw new ScanError("cannot decode: the string has characters a WeakAuras export never has (was it cut or changed?)");
+      const data = await inflateLimited(raw);
+      const values = version >= 2 ? deserializeLibSerialize(data) : deserializeAce(data);
+      if (!values.length || !(values[0] instanceof Map)) throw new ScanError("the string decodes, but not to a WeakAuras export");
+      return [`WA:${version}`, values[0]];
+    }
+
+    function pyFloatRepr(n) {
+      // Python's repr: shortest digits, exponent form when exp < -4 or exp >= 16 ("1e-05", "1e+16")
+      const [mant, exp] = n.toExponential().split("e");
+      const e = parseInt(exp, 10);
+      if (e < -4 || e >= 16) return `${mant}e${e < 0 ? "-" : "+"}${String(Math.abs(e)).padStart(2, "0")}`;
+      return String(n);
+    }
+    function numText(n) {
+      if (n === Infinity) return "inf";
+      if (n === -Infinity) return "-inf";
+      return Number.isInteger(n) ? String(n) : pyFloatRepr(n);
+    }
+    function keyText(k) {
+      if (k === LUA_TRUE) return "[true]";
+      if (k === LUA_FALSE) return "[false]";
+      if (typeof k === "number") return `[${numText(k)}]`;
+      if (typeof k === "string") return IDENT.test(k) ? `.${k}` : `["${k.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"]`;
+      return "[table]";
+    }
+    function keyRank(k) {
+      if (typeof k === "number") return 0;
+      if (typeof k === "string") return 1;
+      if (k === LUA_TRUE || k === LUA_FALSE) return 2;
+      return 3;
+    }
+    function cmpCodePoints(a, b) {
+      // Python compares strings by code point; JS < compares UTF-16 units
+      const A = Array.from(a), B = Array.from(b);
+      for (let i = 0; i < Math.min(A.length, B.length); i++) {
+        const x = A[i].codePointAt(0), y = B[i].codePointAt(0);
+        if (x !== y) return x - y;
+      }
+      return A.length - B.length;
+    }
+    function keyCmp(a, b) {
+      const ra = keyRank(a), rb = keyRank(b);
+      if (ra !== rb) return ra - rb;
+      if (ra === 0) return a - b;
+      if (ra === 1) return cmpCodePoints(a, b);
+      if (ra === 2) return (a === LUA_TRUE ? 1 : 0) - (b === LUA_TRUE ? 1 : 0);
+      return 0;
+    }
+    function isCode(key, value, parent) {
+      if (!strip(value)) return false;
+      if (CODE_KEYS.has(key)) return true;
+      if (key === "value" && parent.get("variable") === "customcheck") return true;
+      return GENERIC_KEY.test(key) && CODE_LIKE.test(value);
+    }
+    function chatDetail(t) {
+      const kind = t.get("message_type");
+      const dest = t.get("message_dest");
+      if (kind === "WHISPER" && typeof dest === "string" && strip(dest)) return `WHISPER → ${cpSlice(strip(dest), 40)}`;
+      return String(kind);
+    }
+    const lstripDot = (s) => s.replace(/^\.+/, "");
+
+    function auraExtract(fmt, transmit) {
+      const root = transmit.get("d");
+      if (!(root instanceof Map)) throw new ScanError("the string decodes, but has no aura in it");
+      const displays = [root];
+      const children = transmit.get("c");
+      if (children instanceof Map) {
+        const ks = [...children.keys()].filter((k) => typeof k === "number" && Number.isInteger(k)).sort((a, b) => a - b);
+        for (const k of ks) if (children.get(k) instanceof Map) displays.push(children.get(k));
+      }
+      const sv = transmit.get("s");
+      const out = { format: fmt, addonVersion: typeof sv === "string" ? sv : "", auras: [], code: [], chat: [], urls: [] };
+      const seenIds = new Map();
+      for (const d of displays) {
+        let name = d.get("id");
+        name = typeof name === "string" && strip(name) ? name : "(no name)";
+        if (seenIds.has(name)) { seenIds.set(name, seenIds.get(name) + 1); name = `${name} (${seenIds.get(name)})`; }
+        else seenIds.set(name, 1);
+        out.auras.push(name);
+        const url = d.get("url");
+        if (typeof url === "string" && strip(url) && !out.urls.includes(strip(url))) out.urls.push(strip(url));
+        walk(d, "", name, out, new Set());
+      }
+      return out;
+    }
+    function walk(t, path, aura, out, seen) {
+      if (seen.has(t)) return;
+      seen.add(t);
+      if (t.get("do_message") === true && SEND_CHAT.has(t.get("message_type"))) out.chat.push([aura, lstripDot(path) || "(aura)", chatDetail(t)]);
+      else if (t.get("property") === "chat" && t.get("value") instanceof Map) {
+        const v = t.get("value");
+        if (SEND_CHAT.has(v.get("message_type"))) out.chat.push([aura, lstripDot(path + ".value"), chatDetail(v)]);
+      }
+      for (const k of [...t.keys()].sort(keyCmp)) {
+        const v = t.get(k);
+        const here = path + keyText(k);
+        if (v instanceof Map) walk(v, here, aura, out, seen);
+        else if (typeof v === "string" && typeof k === "string" && isCode(k, v, t)) out.code.push({ aura, path: lstripDot(here), code: v });
+      }
+    }
+
+    async function analyseAura(text) {
+      const [fmt, transmit] = await auraDecode(text);
+      const exp = auraExtract(fmt, transmit);
+      const label = (a) => a.split("#").join("＃");
+      const units = exp.code.map((c) => ({ path: `${label(c.aura)} › ${c.path}`, source: c.code, lineOffset: 0 }));
+      for (const u of units) { u.scan = scan(u.path, u.source); u.lines = u.source.split("\n"); }
+      const facts = newFacts();
+      for (const u of units) for (const d of createdDialogs(u.scan.tokens)) facts.ownDialogs.add(d);
+      for (const u of units) {
+        analyseUnit(u, facts, new Set());
+        for (const r of u.scan.refs) {
+          const name = AURA_BLOCKED.has(r.name) ? r.name : r.name.split(".")[0];
+          if (AURA_BLOCKED.has(name)) facts.hit("AURA_BLOCKED", ev(u, r.tok, name));
+        }
+      }
+      for (const [aura, path, detail] of exp.chat) {
+        if (facts.cap("chat").length < 40) facts.cap("chat").push({ file: `${label(aura)} › ${path}`, line: 0, detail, snippet: "" });
+      }
+      const [findings, top] = combine(facts, false);
+      const meta = { file: `WeakAuras (${exp.format})`, title: cpSlice(exp.auras[0], 120) };
+      if (exp.addonVersion) meta.version = `WeakAuras ${cpSlice(exp.addonVersion, 40)}`;
+      if (exp.urls.length) meta.url = cpSlice(exp.urls[0], 200);
+      const stats = {
+        auras: exp.auras.length,
+        code_pieces: units.length,
+        bytes: new TextEncoder().encode(text).length,
+        lines: units.reduce((a, u) => a + u.lines.length, 0),
+      };
+      const caps = {};
+      for (const c of Object.keys(R.capabilities)) caps[c] = facts.caps.get(c) || [];
+      return { target: exp.auras[0], severity: top, capabilities: caps, findings, addons: [meta], stats };
+    }
+
+    async function scanAura(text, lang) {
+      return toDict(await analyseAura(text), lang || "es");
+    }
+
+    return { scanZip, scanAura, readZip, analyse, analyseAura, toDict };
   }
 
   return { VERSION, ScanError, tokenize, scan, make };

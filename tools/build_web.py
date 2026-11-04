@@ -15,6 +15,9 @@ EXAMPLES = [
     ("Packed", {"es": "Código escondido", "en": "Hidden code"}),
     ("Clean", {"es": "Addon limpio", "en": "Clean addon"}),
 ]
+AURA_EXAMPLES = [
+    ("mail_scam", {"es": "Aura que manda tu oro", "en": "Aura that mails your gold"}),
+]
 
 
 def examples() -> list[dict]:
@@ -26,6 +29,9 @@ def examples() -> list[dict]:
             if p.is_file()
         }
         out.append({"id": folder.lower(), "name": f"{folder}.zip", "label": label, "files": files})
+    for name, label in AURA_EXAMPLES:
+        text = (FIX / "auras" / f"{name}.txt").read_text(encoding="utf-8").strip()
+        out.append({"id": "aura-" + name.replace("_", "-"), "label": label, "aura": text})
     return out
 
 

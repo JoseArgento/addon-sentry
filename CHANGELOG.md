@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- WeakAuras import strings: `addon-sentry --aura FILE|-` and a paste box on the page. Decodes `!WA:2!` (LibDeflate + LibSerialize), `!` (LibDeflate + AceSerializer) and pre-2018 strings (LibCompress LZW/Huffman + AceSerializer) without running anything, then scans every field WeakAuras compiles as code.
+- New signal `AURA_BLOCKED`: aura code that uses something WeakAuras blocks in its sandbox.
+- Automatic chat actions in auras (whisper, guild, raid...) count as "sends chat messages".
+- Decoder tests against the real Lua libraries (optional, needs `lupa`); fixtures made by `tools/make_aura_fixtures.py`.
+
 ## 0.1.0 (2026-11-03)
 
 First release.
