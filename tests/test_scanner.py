@@ -241,4 +241,22 @@ def test_locals_inside_a_callback_argument_are_local():
     from addon_sentry.lua import scan
 
     src = "C_Timer.After(1, function()\n  if x then\n    local SendMail = print\n    SendMail('a')\n  end\nend)\n"
-    assert [r.name for r in scan("a.lua", src).refs] == ["C_Timer.After", "x", "print"]
+    # SendMail is local; calling it calls what it stands for (print), not the global SendMail
+    assert [r.name for r in scan("a.lua", src).refs] == ["C_Timer.After", "x", "print", "print"]
+
+
+def test_local_table_then_function_on_the_next_line():
+    from addon_sentry.lua import scan
+
+    src = "local SendMail = {}\nfunction ns.On(t)\n  SendMail[t] = 1\nend\n"
+    assert [r.name for r in scan("a.lua", src).refs] == ["ns"]
+
+
+def test_calls_through_a_local_alias_count():
+    # Details does "local load = loadstring" and calls load(code) later.
+    from addon_sentry.lua import scan
+
+    src = "local load = loadstring\nlocal C = C_TradeInfo\nfunction f(s)\n  load(s)()\n  C.SetTradeMoney(1)\nend\nlocal p = print\np = nil\np()\n"
+    refs = [(r.name, r.is_call, r.alias) for r in scan("a.lua", src).refs]
+    assert ("loadstring", True, True) in refs and ("C_TradeInfo.SetTradeMoney", True, True) in refs
+    assert ("print", True, True) not in refs  # reassigned: no longer the global

@@ -345,10 +345,23 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   const GUARD_AFTER = new Set(["and", "or", "then", "do"]);
 
   class Scope {
-    constructor(parent) { this.names = new Set(); this.parent = parent; }
+    constructor(parent) { this.names = new Set(); this.parent = parent; this.aliases = new Map(); }
     has(name) { for (let s = this; s; s = s.parent) if (s.names.has(name)) return true; return false; }
+    owner(name) { for (let s = this; s; s = s.parent) if (s.names.has(name)) return s; return null; }
   }
   const isValueEnd = (t) => t.kind === NAME || t.kind === NUMBER || t.kind === STRING || isOp(t, ")", "]", "}") || (t.kind === KEYWORD && VALUE_END_KW.has(t.value));
+
+  // "local load = loadstring": the global ("A" or "A.B") a single local stands for, or null
+  function aliasOf(toks, k, names, scope) {
+    const n = toks.length;
+    if (names.length !== 1 || k >= n || toks[k].kind !== NAME || scope.has(toks[k].value)) return null;
+    const chain = [toks[k].value];
+    let e = k + 1;
+    while (e + 1 < n && isOp(toks[e], ".") && toks[e + 1].kind === NAME) { chain.push(toks[e + 1].value); e += 2; }
+    if (chain.length > 2) return null;
+    const end = e >= n || isOp(toks[e], ";") || toks[e].line > toks[e - 1].line || (toks[e].kind === KEYWORD && STATEMENT_KW.has(toks[e].value));
+    return end ? chain.join(".") : null;
+  }
 
   function looksLikeAssignment(toks, j) {
     let k = j;
@@ -376,8 +389,11 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     const flush = (force) => {
       const keep = [];
       for (const p of pendingLocals) {
-        if (force || p[2] === blocks.length) for (const x of p[0]) p[1].names.add(x);
-        else keep.push(p);
+        if (force || p[2] === blocks.length) {
+          for (const x of p[0]) p[1].names.add(x);
+          if (p[3]) p[1].aliases.set(p[0][0], p[3]);
+          else for (const x of p[0]) p[1].aliases.delete(x);
+        } else keep.push(p);
       }
       pendingLocals = keep;
     };
@@ -387,7 +403,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       const t = toks[i];
       const prev = i ? toks[i - 1] : null;
       if (pendingLocals.length && !brackets.length && prev) {
-        if (isOp(t, ";") || (t.kind === KEYWORD && STATEMENT_KW.has(t.value) && t.value !== "function") || (t.kind === NAME && t.line > prev.line && isValueEnd(prev))) flush(false);
+        if (isOp(t, ";") || (t.kind === KEYWORD && STATEMENT_KW.has(t.value) && t.value !== "function") || (t.kind === NAME && t.line > prev.line && isValueEnd(prev)) || (isKw(t, "function") && t.line > prev.line && isValueEnd(prev))) flush(false);
       }
       if (t.kind === OP) {
         if ("([{".includes(t.value) && t.value.length === 1) brackets.push(t.value);
@@ -413,7 +429,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
             if (j < n && isOp(toks[j], ",")) { j++; continue; }
             break;
           }
-          if (j < n && isOp(toks[j], "=")) pendingLocals.push([names, scope, blocks.length]);
+          if (j < n && isOp(toks[j], "=")) pendingLocals.push([names, scope, blocks.length, aliasOf(toks, j + 1, names, scope)]);
           else for (const x of names) scope.names.add(x);
           i = j;
           continue;
@@ -475,9 +491,23 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       if (prev && (isOp(prev, ".", ":", "::") || isKw(prev, "goto"))) { i++; continue; }
       const nxt = i + 1 < n ? toks[i + 1] : null;
       if (brackets.length && brackets[brackets.length - 1] === "{" && nxt && isOp(nxt, "=") && prev && isOp(prev, "{", ",", ";")) { i++; continue; }
-      if (scope.has(t.value)) {
-        if (nxt && isOp(nxt, "=") && !brackets.length) reassigned.add(t.value);
-        i++;
+      const owner = scope.owner(t.value);
+      if (owner) {
+        if (nxt && isOp(nxt, "=") && !brackets.length) {
+          reassigned.add(t.value);
+          owner.aliases.delete(t.value);
+          i++;
+          continue;
+        }
+        const alias = owner.aliases.get(t.value);
+        if (alias === undefined) { i++; continue; }
+        let j = i + 1;
+        let full = alias;
+        if (!alias.includes(".") && j + 1 < n && isOp(toks[j], ".") && toks[j + 1].kind === NAME) { full = alias + "." + toks[j + 1].value; j += 2; }
+        const after = j < n ? toks[j] : null;
+        const isCall = !!after && (isOp(after, "(", "{", ":") || after.kind === STRING);
+        refs.push({ name: full, tok: t, index: i, end: j, isCall, guarded: false, alias: true });
+        i = j;
         continue;
       }
       let j = i + 1;

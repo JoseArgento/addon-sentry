@@ -25,6 +25,7 @@ class _Ref:
     end: int  # token index after the chain
     is_call: bool
     guarded: bool
+    alias: bool = False  # a call through "local load = loadstring": name is what the local stands for
 
 
 @dataclass(slots=True)
@@ -37,11 +38,20 @@ class FileScan:
 
 
 class _Scope:
-    __slots__ = ("names", "parent")
+    __slots__ = ("names", "parent", "aliases")
 
     def __init__(self, parent: _Scope | None):
         self.names: set[str] = set()
         self.parent = parent
+        self.aliases: dict[str, str] = {}  # "local load = loadstring" -> {"load": "loadstring"}
+
+    def owner(self, name: str) -> _Scope | None:
+        s: _Scope | None = self
+        while s is not None:
+            if name in s.names:
+                return s
+            s = s.parent
+        return None
 
     def has(self, name: str) -> bool:
         s: _Scope | None = self
@@ -70,7 +80,7 @@ def scan(path: str, source: str) -> FileScan:
     blocks: list[_Scope] = []
     pending_loop: list[str] = []
     # (names, scope, block depth) declared by "local a, b = ..." and waiting for the statement to end
-    pending_locals: list[tuple[list[str], _Scope, int]] = []
+    pending_locals: list[tuple[list[str], _Scope, int, str | None]] = []
     brackets: list[str] = []  # "(", "[", "{"
     # A function body starts with no open brackets, even inside a call: f(function() local a = 1 ... end)
     fn_brackets: list[tuple[int, list[str]]] = []  # (block depth of the body, brackets outside it)
@@ -89,11 +99,16 @@ def scan(path: str, source: str) -> FileScan:
 
     def flush_locals(force: bool = False) -> None:
         keep = []
-        for names, sc, depth in pending_locals:
+        for names, sc, depth, alias in pending_locals:
             if force or depth == len(blocks):
                 sc.names.update(names)
+                if alias:
+                    sc.aliases[names[0]] = alias
+                else:
+                    for name in names:
+                        sc.aliases.pop(name, None)
             else:
-                keep.append((names, sc, depth))
+                keep.append((names, sc, depth, alias))
         pending_locals[:] = keep
 
     i = 0
@@ -107,6 +122,8 @@ def scan(path: str, source: str) -> FileScan:
                 t.is_op(";")
                 or (t.kind == KEYWORD and t.value in STATEMENT_KW and t.value != "function")
                 or (t.kind == NAME and t.line > prev.line and _is_value_end(prev))
+                # "local t = {}" then "function t.x()" on the next line
+                or (t.is_kw("function") and t.line > prev.line and _is_value_end(prev))
             ):
                 flush_locals()
 
@@ -139,7 +156,7 @@ def scan(path: str, source: str) -> FileScan:
                         continue
                     break
                 if j < n and toks[j].is_op("="):
-                    pending_locals.append((names, scope, len(blocks)))
+                    pending_locals.append((names, scope, len(blocks), _alias_of(toks, j + 1, names, scope)))
                 else:
                     scope.names.update(names)
                 i = j
@@ -219,10 +236,26 @@ def scan(path: str, source: str) -> FileScan:
         if brackets and brackets[-1] == "{" and nxt is not None and nxt.is_op("=") and prev is not None and prev.is_op("{", ",", ";"):
             i += 1
             continue
-        if scope.has(t.value):
+        owner = scope.owner(t.value)
+        if owner is not None:
             if nxt is not None and nxt.is_op("=") and not brackets:
                 reassigned.add(t.value)
-            i += 1
+                owner.aliases.pop(t.value, None)  # no longer stands for the global
+                i += 1
+                continue
+            alias = owner.aliases.get(t.value)
+            if alias is None:
+                i += 1
+                continue
+            j = i + 1
+            full = alias
+            if "." not in alias and j + 1 < n and toks[j].is_op(".") and toks[j + 1].kind == NAME:
+                full = f"{alias}.{toks[j + 1].value}"
+                j += 2
+            after = toks[j] if j < n else None
+            is_call = after is not None and (after.is_op("(", "{", ":") or after.kind == STRING)
+            refs.append(_Ref(full, t, i, j, is_call, False, True))
+            i = j
             continue
 
         # Global reference. Build "Base.Member" for namespace tables.
@@ -270,6 +303,22 @@ def scan(path: str, source: str) -> FileScan:
             r.guarded = True
     # No inline "ignore" comments here on purpose: the code being scanned must not be able to silence the scanner.
     return FileScan(path, refs, defines, guarded, toks)
+
+
+def _alias_of(toks: list[Token], k: int, names: list[str], scope: _Scope) -> str | None:
+    """``local load = loadstring``: the global (``A`` or ``A.B``) a single local stands for, or None."""
+    n = len(toks)
+    if len(names) != 1 or k >= n or toks[k].kind != NAME or scope.has(toks[k].value):
+        return None
+    chain = [toks[k].value]
+    e = k + 1
+    while e + 1 < n and toks[e].is_op(".") and toks[e + 1].kind == NAME:
+        chain.append(toks[e + 1].value)
+        e += 2
+    if len(chain) > 2:
+        return None
+    end = e >= n or toks[e].is_op(";") or toks[e].line > toks[e - 1].line or (toks[e].kind == KEYWORD and toks[e].value in STATEMENT_KW)
+    return ".".join(chain) if end else None
 
 
 def _looks_like_assignment(toks: list[Token], j: int) -> bool:
