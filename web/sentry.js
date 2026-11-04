@@ -152,16 +152,25 @@
   }
   const isValueEnd = (t) => t.kind === NAME || t.kind === NUMBER || t.kind === STRING || isOp(t, ")", "]", "}") || (t.kind === KEYWORD && VALUE_END_KW.has(t.value));
 
-  // "local load = loadstring": the global ("A" or "A.B") a single local stands for, or null
+  // "local load = loadstring" / "local A, B = A, B": the globals ("A" or "A.B") the locals stand for, or null
   function aliasOf(toks, k, names, scope) {
     const n = toks.length;
-    if (names.length !== 1 || k >= n || toks[k].kind !== NAME || scope.has(toks[k].value)) return null;
-    const chain = [toks[k].value];
-    let e = k + 1;
-    while (e + 1 < n && isOp(toks[e], ".") && toks[e + 1].kind === NAME) { chain.push(toks[e + 1].value); e += 2; }
-    if (chain.length > 2) return null;
+    const out = new Map();
+    let e = k;
+    for (let idx = 0; idx < names.length; idx++) {
+      if (e >= n || toks[e].kind !== NAME || scope.has(toks[e].value)) return null;
+      const chain = [toks[e].value];
+      e++;
+      while (e + 1 < n && isOp(toks[e], ".") && toks[e + 1].kind === NAME) { chain.push(toks[e + 1].value); e += 2; }
+      if (chain.length > 2) return null;
+      out.set(names[idx], chain.join("."));
+      if (idx < names.length - 1) {
+        if (e >= n || !isOp(toks[e], ",")) return null;
+        e++;
+      }
+    }
     const end = e >= n || isOp(toks[e], ";") || toks[e].line > toks[e - 1].line || (toks[e].kind === KEYWORD && STATEMENT_KW.has(toks[e].value));
-    return end ? chain.join(".") : null;
+    return end ? out : null;
   }
 
   function looksLikeAssignment(toks, j) {
@@ -191,9 +200,11 @@
       const keep = [];
       for (const p of pendingLocals) {
         if (force || p[2] === blocks.length) {
-          for (const x of p[0]) p[1].names.add(x);
-          if (p[3]) p[1].aliases.set(p[0][0], p[3]);
-          else for (const x of p[0]) p[1].aliases.delete(x);
+          for (const x of p[0]) {
+            p[1].names.add(x);
+            if (p[3] && p[3].has(x)) p[1].aliases.set(x, p[3].get(x));
+            else p[1].aliases.delete(x);
+          }
         } else keep.push(p);
       }
       pendingLocals = keep;

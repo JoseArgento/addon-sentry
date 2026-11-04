@@ -260,3 +260,5 @@ def test_calls_through_a_local_alias_count():
     refs = [(r.name, r.is_call, r.alias) for r in scan("a.lua", src).refs]
     assert ("loadstring", True, True) in refs and ("C_TradeInfo.SetTradeMoney", True, True) in refs
     assert ("print", True, True) not in refs  # reassigned: no longer the global
+    src = "local A, B = SendMail, GetMoney\nA(B())\n"
+    assert [(r.name, r.alias) for r in scan("a.lua", src).refs][-2:] == [("SendMail", True), ("GetMoney", True)]

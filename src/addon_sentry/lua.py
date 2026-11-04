@@ -80,7 +80,7 @@ def scan(path: str, source: str) -> FileScan:
     blocks: list[_Scope] = []
     pending_loop: list[str] = []
     # (names, scope, block depth) declared by "local a, b = ..." and waiting for the statement to end
-    pending_locals: list[tuple[list[str], _Scope, int, str | None]] = []
+    pending_locals: list[tuple[list[str], _Scope, int, dict[str, str] | None]] = []
     brackets: list[str] = []  # "(", "[", "{"
     # A function body starts with no open brackets, even inside a call: f(function() local a = 1 ... end)
     fn_brackets: list[tuple[int, list[str]]] = []  # (block depth of the body, brackets outside it)
@@ -102,10 +102,10 @@ def scan(path: str, source: str) -> FileScan:
         for names, sc, depth, alias in pending_locals:
             if force or depth == len(blocks):
                 sc.names.update(names)
-                if alias:
-                    sc.aliases[names[0]] = alias
-                else:
-                    for name in names:
+                for name in names:
+                    if alias and name in alias:
+                        sc.aliases[name] = alias[name]
+                    else:
                         sc.aliases.pop(name, None)
             else:
                 keep.append((names, sc, depth, alias))
@@ -305,20 +305,28 @@ def scan(path: str, source: str) -> FileScan:
     return FileScan(path, refs, defines, guarded, toks)
 
 
-def _alias_of(toks: list[Token], k: int, names: list[str], scope: _Scope) -> str | None:
-    """``local load = loadstring``: the global (``A`` or ``A.B``) a single local stands for, or None."""
+def _alias_of(toks: list[Token], k: int, names: list[str], scope: _Scope) -> dict[str, str] | None:
+    """``local load = loadstring`` / ``local A, B = A, B``: the globals (``A`` or ``A.B``) the locals stand for."""
     n = len(toks)
-    if len(names) != 1 or k >= n or toks[k].kind != NAME or scope.has(toks[k].value):
-        return None
-    chain = [toks[k].value]
-    e = k + 1
-    while e + 1 < n and toks[e].is_op(".") and toks[e + 1].kind == NAME:
-        chain.append(toks[e + 1].value)
-        e += 2
-    if len(chain) > 2:
-        return None
+    out: dict[str, str] = {}
+    e = k
+    for idx, name in enumerate(names):
+        if e >= n or toks[e].kind != NAME or scope.has(toks[e].value):
+            return None
+        chain = [toks[e].value]
+        e += 1
+        while e + 1 < n and toks[e].is_op(".") and toks[e + 1].kind == NAME:
+            chain.append(toks[e + 1].value)
+            e += 2
+        if len(chain) > 2:
+            return None
+        out[name] = ".".join(chain)
+        if idx < len(names) - 1:
+            if e >= n or not toks[e].is_op(","):
+                return None
+            e += 1
     end = e >= n or toks[e].is_op(";") or toks[e].line > toks[e - 1].line or (toks[e].kind == KEYWORD and toks[e].value in STATEMENT_KW)
-    return ".".join(chain) if end else None
+    return out if end else None
 
 
 def _looks_like_assignment(toks: list[Token], j: int) -> bool:
