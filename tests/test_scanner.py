@@ -234,3 +234,11 @@ def test_spanish_and_english_texts_exist_for_every_rule():
         for lang in ("es", "en"):
             title, explanation = r[lang]
             assert title and explanation.endswith((".", ")")), (rid, lang)
+
+
+def test_locals_inside_a_callback_argument_are_local():
+    # Regression: locals declared in a function passed to a call were taken for globals.
+    from addon_sentry.lua import scan
+
+    src = "C_Timer.After(1, function()\n  if x then\n    local SendMail = print\n    SendMail('a')\n  end\nend)\n"
+    assert [r.name for r in scan("a.lua", src).refs] == ["C_Timer.After", "x", "print"]

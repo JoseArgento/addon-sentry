@@ -171,6 +171,7 @@
     let pendingLoop = [];
     let pendingLocals = [];
     const brackets = [];
+    const fnBrackets = []; // [block depth of a function body, brackets outside it]
     const push = (names) => { scope = new Scope(scope); for (const x of names || []) scope.names.add(x); blocks.push(scope); };
     const pop = () => { if (blocks.length) { blocks.pop(); scope = blocks.length ? blocks[blocks.length - 1] : root; } };
     const flush = (force) => {
@@ -242,6 +243,8 @@
             j++;
           }
           push(params);
+          fnBrackets.push([blocks.length, brackets.slice()]);
+          brackets.length = 0;
           i = j;
           continue;
         }
@@ -256,7 +259,15 @@
         else if (v === "then" || v === "repeat") push();
         else if (v === "elseif") pop();
         else if (v === "else") { pop(); push(); }
-        else if (v === "end" || v === "until") { flush(false); pop(); }
+        else if (v === "end" || v === "until") {
+          flush(false);
+          if (v === "end" && fnBrackets.length && fnBrackets[fnBrackets.length - 1][0] === blocks.length) {
+            const saved = fnBrackets.pop()[1];
+            brackets.length = 0;
+            brackets.push(...saved);
+          }
+          pop();
+        }
         else if (v === "goto") { i += 2; continue; }
         i++;
         continue;
