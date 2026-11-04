@@ -117,8 +117,8 @@ CAPABILITIES: dict[str, dict] = {
             "C_QuestLog.AbandonQuest",
             "AbandonSkill",
         },
-        "en": "Can disband or kick from the guild, log out, leave the group or abandon progress",
-        "es": "Puede disolver la guild o echar gente, desconectarte, salir del grupo o abandonar progreso",
+        "en": "Can disband or kick from the guild, log out, leave the group, abandon a pet or abandon progress",
+        "es": "Puede disolver la guild o echar gente, desconectarte, salir del grupo, abandonar una mascota o abandonar progreso",
     },
     "profiling": {
         "api": {
@@ -133,6 +133,11 @@ CAPABILITIES: dict[str, dict] = {
         },
         "en": "Inspects other players or reads their statistics",
         "es": "Inspecciona a otros jugadores o lee sus estadísticas",
+    },
+    "frames": {
+        "api": {"GetFrameMetatable", "GetButtonMetatable", "GetEditBoxMetatable", "GetFontStringMetatable", "EnumerateFrames"},
+        "en": "Walks through or changes every window of the interface (common in skins)",
+        "es": "Recorre o modifica todas las ventanas de la interfaz (común en los skins)",
     },
     "macros": {
         "api": {
@@ -396,11 +401,11 @@ FINDINGS: dict[str, dict] = {
         "severity": "critical",
         "en": (
             "Hidden code that runs more code",
-            "Part of the code is encoded so people cannot read it, and it is decoded and run. Legitimate addons have no reason to do this.",
+            "Part of the code is encoded so people cannot read it, and it is decoded and run. Legitimate addons have no reason to do this, and Blizzard's add-on policy forbids hidden code.",
         ),
         "es": (
             "Código escondido que ejecuta más código",
-            "Una parte del código está codificada para que no se pueda leer, y se decodifica y ejecuta. Un addon legítimo no tiene motivo para hacer esto.",
+            "Una parte del código está codificada para que no se pueda leer, y se decodifica y ejecuta. Un addon legítimo no tiene motivo para hacer esto, y la política de addons de Blizzard prohíbe esconder código.",
         ),
     },
     "HIDDEN_MONEY": {
@@ -528,11 +533,11 @@ FINDINGS: dict[str, dict] = {
         "severity": "medium",
         "en": (
             "Hard-to-read code",
-            "Long encoded strings, character-code tricks or scrambled names. Compressed profile data is legitimate; scrambled code is not common in addons.",
+            "Long encoded strings, character-code tricks or scrambled names. Compressed profile data is legitimate, but Blizzard's add-on policy (rule 2) says an addon's code must in no way be hidden or obfuscated.",
         ),
         "es": (
             "Código difícil de leer",
-            "Strings codificados largos, trucos con códigos de caracteres o nombres revueltos. Los perfiles comprimidos son legítimos; el código revuelto no es común en addons.",
+            "Strings codificados largos, trucos con códigos de caracteres o nombres revueltos. Los perfiles comprimidos son legítimos, pero la política de addons de Blizzard (regla 2) dice que el código de un addon no puede estar escondido ni ofuscado de ninguna forma.",
         ),
     },
     "SABOTAGE": {
