@@ -4,6 +4,19 @@ Revisá un addon de World of Warcraft **antes de instalarlo**. Lee el código Lu
 
 [Read in English](README.en.md)
 
+![Addon Sentry revisando un addon de ejemplo](docs/page.png)
+
+**Usalo acá, sin instalar nada:** https://joseargento.github.io/addon-sentry/
+
+**Contenido**
+
+- [Auras de WeakAuras](#auras-de-weakauras)
+- [Qué busca](#qué-busca)
+- [Cómo se probó](#cómo-se-probó)
+- [Límites](#límites)
+- [Desarrollo](#desarrollo)
+- [Apoyar](#apoyar)
+
 ```
 $ addon-sentry FastBuyer.zip
 addon-sentry 0.1.0 · FastBuyer.zip
@@ -74,5 +87,9 @@ ADDON_SENTRY_REAL_AURAS=../strings pytest                         # carpeta con 
 python tools/export_rules.py            # después de tocar rules.py
 python tools/build_web.py               # arma dist/index.html
 ```
+
+## Apoyar
+
+Todo esto es gratis y de código abierto, y va a seguir así: no hay funciones pagas ni nada antes para quien aporta. Si te sirvió y querés bancar el tiempo de mantenerlo (con cada parche de Blizzard hay que actualizar los datos y arreglar lo que se rompe), podés hacerlo en [Patreon](https://www.patreon.com/cw/DoblePupi). Gracias ♥
 
 Sin relación con Blizzard Entertainment. World of Warcraft es marca registrada de Blizzard Entertainment, Inc. Licencia MIT.

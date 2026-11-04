@@ -2,6 +2,12 @@
 
 Check a World of Warcraft addon **before you install it**. It reads the addon's Lua code without running it and warns about backdoors, tricks that move your gold, hidden code and files that should not be there.
 
+[Leer en castellano](README.md)
+
+![Addon Sentry checking an example addon](docs/page.png)
+
+**Use it here, nothing to install:** https://joseargento.github.io/addon-sentry/
+
 - **Web page** (`dist/index.html`, one file): drop the zip, it is checked inside the browser and never uploaded.
 - **Command line**: `pip install addon-sentry`, then `addon-sentry file.zip` or `addon-sentry folder/` (`--lang en`, `--format json`, `--fail-on high`).
 
@@ -12,3 +18,7 @@ It separates what an addon **can do** (many legitimate addons move gold or send 
 Only code the game loads counts (files listed by `.toc`/`.xml`, including inline XML scripts). The scanner ignores "ignore" comments inside the code it scans. The Python and JavaScript engines are checked against each other on the same zips, including eight popular addons.
 
 It is an automatic pattern check: it cannot prove an addon is safe, and a warning is not proof of bad intent. Not affiliated with Blizzard Entertainment. MIT license.
+
+## Support
+
+All of this is free and open source, and it stays that way: no paid features, nothing early for supporters. If it helped you and you want to cover the time it takes to keep it working (every Blizzard patch means refreshing the data and fixing what broke), you can do that on [Patreon](https://www.patreon.com/cw/DoblePupi). Thanks ♥
