@@ -45,7 +45,8 @@ def text_report(d: dict, lang: str, color: bool, verbose: bool) -> str:
         out.append(c("  " + " · ".join(b for b in bits if b), "dim"))
     st = d["stats"]
     if "auras" in st:
-        out.append(c(f"  {st['auras']} {L['auras']}, {st['code_pieces']} {L['pieces']}, {st['lines']} {L['lines']}", "dim"))
+        auras = f"{st['auras']} {L['auras'] if st['auras'] != 1 else 'aura'}"
+        out.append(c(f"  {auras}, {st['code_pieces']} {L['pieces']}, {st['lines']} {L['lines']}", "dim"))
     else:
         out.append(c(f"  {st['files']} {L['files']}, {st['lines']} {L['lines']}", "dim"))
     out.append("")
@@ -56,7 +57,8 @@ def text_report(d: dict, lang: str, color: bool, verbose: bool) -> str:
         out.append(c(L["caps"], "bold"))
         for cap in d["capabilities"]:
             ex = cap["evidence"][0]
-            out.append(f"  • {cap['text']}" + c(f"  ({ex['detail']}, {ex['file']}:{ex['line']})", "dim"))
+            where = f"{ex['file']}:{ex['line']}" if ex["line"] else ex["file"]
+            out.append(f"  • {cap['text']}" + c(f"  ({ex['detail']}, {where})", "dim"))
         out.append("")
     shown = [f for f in d["findings"] if verbose or f["severity"] != "info"]
     out.append(c(L["findings"], "bold"))
