@@ -662,6 +662,135 @@ def _mark_loaded(path: str, lower: dict[str, str], files: dict[str, bytes], load
             _mark_loaded(posixpath.normpath(posixpath.join(posixpath.dirname(real), ref.replace("\\", "/"))), lower, files, loaded)
 
 
+# --------------------------------------------------------------------------- does it load in Forever?
+
+LOOSE = "__loose__"  # name of the pseudo-addon holding files outside every addon folder; to_dict translates it
+
+
+def _toc_dirs(files: dict[str, bytes]) -> list[str]:
+    return sorted({posixpath.dirname(p) for p in files if p.lower().endswith(".toc")}, key=lambda d: (d.count("/") if d else -1, d))
+
+
+def addon_roots(files: dict[str, bytes]) -> list[str]:
+    """Folders that hold an addon's TOCs. A folder under another root (an embedded library) is not a root."""
+    roots: list[str] = []
+    for d in _toc_dirs(files):
+        if not any(r == "" or d == r or d.startswith(r + "/") for r in roots):
+            roots.append(d)
+    return roots
+
+
+def _flavor(interfaces: list[int], lang: str) -> str:
+    for v in interfaces:
+        for lo, hi, names in rules.INTERFACE_FLAVORS:
+            if lo <= v <= hi:
+                return names[lang]
+    return {"es": "otra versión", "en": "another version"}[lang]
+
+
+def forever_check(files: dict[str, bytes], root: str, name: str) -> dict:
+    """Which TOC Forever would pick for the addon in ``root`` (``""`` for the package root) and whether it loads."""
+    prefix = root + "/" if root else ""
+    tocs = sorted(p for p in files if p.lower().endswith(".toc") and posixpath.dirname(p) == root)
+    out: dict = {"status": "none", "name": name, "toc": "", "tocs": ", ".join(posixpath.basename(t) for t in tocs), "interface": ""}
+    if not tocs:
+        return out
+    lower = {posixpath.basename(t).lower(): t for t in tocs}
+    chosen = next(
+        (lower.get(f"{name}{suffix}.toc".lower()) for suffix in rules.FOREVER_TOC_SUFFIXES if lower.get(f"{name}{suffix}.toc".lower())),
+        None,
+    )
+    if chosen is None:
+        out["status"] = "no_toc"
+        out["rename"] = _toc_stem(tocs)
+        return out
+    out["toc"] = chosen[len(prefix) :]
+    keyed: dict[str, list[int]] = {}
+    allow: set[str] | None = None
+    exclude: set[str] = set()
+    for raw in _decode(files[chosen]).splitlines():
+        line = raw.strip()
+        if not line.startswith("##"):
+            continue
+        key, _, value = line[2:].partition(":")
+        key, value = key.strip().lower(), value.strip()
+        if key in rules.FOREVER_INTERFACE_KEYS:
+            keyed.setdefault(key, [int(v) for v in re.findall(r"\d+", value)])
+        elif key == "allowloadgametype":
+            allow = (allow or set()) | {v.strip().lower() for v in value.split(",") if v.strip()}
+        elif key == "excludeloadgametype":
+            exclude |= {v.strip().lower() for v in value.split(",") if v.strip()}
+    game_types = {"camelot", "forever", "mainline"}
+    if (allow is not None and not (allow & game_types)) or (exclude & game_types):
+        out["status"] = "excluded"
+        return out
+    interfaces = next((keyed[k] for k in rules.FOREVER_INTERFACE_KEYS if keyed.get(k)), [])
+    out["interface"] = ", ".join(str(v) for v in interfaces)
+    lo, hi = rules.FOREVER_INTERFACE_RANGE
+    if not interfaces:
+        out["status"] = "unknown"
+    elif any(lo <= v <= hi for v in interfaces):
+        out["status"] = "loads"
+    else:
+        out["status"] = "outdated"
+    return out
+
+
+def _toc_stem(tocs: list[str]) -> str:
+    """The addon name the TOCs are written for: a plain <Name>.toc if there is one, else the first one minus its flavor suffix."""
+    rx = re.compile(rules.TOC_FLAVOR_SUFFIX, re.I)
+    stems = [posixpath.basename(t)[:-4] for t in tocs]
+    plain = [s for s in stems if not rx.search(s)]
+    return plain[0] if plain else rx.sub("", stems[0])
+
+
+def forever_dict(check: dict, lang: str) -> dict:
+    label, detail = rules.FOREVER_LOAD[check["status"]][lang]
+    fields = dict(check, flavor=_flavor([int(v) for v in re.findall(r"\d+", check["interface"])], lang))
+    return {
+        "status": check["status"],
+        "text": label,
+        "detail": detail.format(**fields),
+        "toc": check["toc"],
+        "interface": check["interface"],
+    }
+
+
+def split_packages(pkg: Package) -> list[Package] | None:
+    """One Package per addon folder when the zip or folder holds several addons; None for a single addon."""
+    roots = addon_roots(pkg.files)
+    if len(roots) < 2:
+        return None
+    groups: dict[str, Package] = {}
+    for r in roots:
+        groups[r] = Package(posixpath.basename(r), {}, [], 0, 0)
+    loose = Package(LOOSE, {}, [], 0, 0)
+
+    def owner(path: str) -> Package:
+        for r in roots:
+            if path == r or path.startswith(r + "/"):
+                return groups[r]
+        return loose
+
+    for path, data in pkg.files.items():
+        owner(path).files[path] = data
+    for h in pkg.hits:
+        split: dict[int, Hit] = {}
+        for e in h.evidence:
+            split.setdefault(id(owner(_safe_member(e.file)[0])), Hit(h.id)).evidence.append(e)
+        for g in list(groups.values()) + [loose]:
+            if id(g) in split:
+                g.hits.append(split[id(g)])
+    for g in list(groups.values()) + [loose]:
+        # Only the files the scanner keeps are known per addon; the package-level hits name the rest.
+        g.entries = len(g.files) + len({e.file for h in g.hits for e in h.evidence if e.file not in g.files})
+        g.total_bytes = sum(len(d) for d in g.files.values())
+    out = list(groups.values())
+    if loose.files or loose.hits:
+        out.append(loose)
+    return out
+
+
 # --------------------------------------------------------------------------- report
 
 
@@ -673,12 +802,14 @@ class Report:
     findings: list[Hit]
     addons: list[dict]
     stats: dict
+    forever: dict | None = None  # forever_check(); None for aura reports
 
     def to_dict(self, lang: str = "es") -> dict:
         return {
             "tool": {"name": "addon-sentry", "version": __version__},
-            "target": self.target,
+            "target": rules.AUDIT[lang]["loose"] if self.target == LOOSE else self.target,
             "verdict": {"level": self.severity, "text": rules.VERDICTS[self.severity][lang]},
+            "forever": forever_dict(self.forever, lang) if self.forever is not None else None,
             "addons": self.addons,
             "capabilities": [
                 {"id": cap, "text": rules.CAPABILITIES[cap][lang], "evidence": [e.__dict__ for e in evs[:12]], "count": len(evs)}
@@ -735,7 +866,60 @@ def analyse(pkg: Package) -> Report:
         "lines": sum(len(u.lines) for u in units),
     }
     caps = {c: facts.caps.get(c, []) for c in rules.CAPABILITIES}
-    return Report(pkg.name, top, caps, findings, addons, stats)
+    roots = addon_roots(pkg.files)
+    root = roots[0] if len(roots) == 1 else ""
+    name = posixpath.basename(root) if root else re.sub(r"\.zip$", "", pkg.name, flags=re.I)
+    return Report(pkg.name, top, caps, findings, addons, stats, forever_check(pkg.files, root, name))
+
+
+@dataclass
+class MultiReport:
+    """A zip or folder with several addons (a whole AddOns folder): one Report each, plus a summary."""
+
+    target: str
+    reports: list[Report]
+
+    @property
+    def severity(self) -> str:
+        order = {s: i for i, s in enumerate(rules.SEVERITIES)}
+        return max((r.severity for r in self.reports), key=lambda s: order[s], default="info")
+
+    def to_dict(self, lang: str = "es") -> dict:
+        reports = [r.to_dict(lang) for r in self.reports]
+        summary = []
+        for r, d in zip(self.reports, reports, strict=True):
+            a = r.addons[0] if r.addons else {}
+            summary.append(
+                {
+                    "name": d["target"],
+                    "title": a.get("title") or d["target"],
+                    "version": a.get("version", ""),
+                    "verdict": d["verdict"],
+                    "forever": {"status": d["forever"]["status"], "text": d["forever"]["text"]},
+                    "capabilities": [{"id": c["id"], "text": rules.CAPABILITY_SHORT[c["id"]][lang]} for c in d["capabilities"]],
+                }
+            )
+        return {
+            "tool": {"name": "addon-sentry", "version": __version__},
+            "target": self.target,
+            "multi": True,
+            "verdict": {"level": self.severity, "text": rules.VERDICTS[self.severity][lang]},
+            "summary": summary,
+            "reports": reports,
+            "stats": {
+                "addons": sum(1 for r in self.reports if r.target != LOOSE),
+                "files": sum(d["stats"]["files"] for d in reports),
+                "lines": sum(d["stats"]["lines"] for d in reports),
+            },
+            "disclaimer": rules.DISCLAIMER[lang],
+        }
+
+
+def analyse_any(pkg: Package) -> Report | MultiReport:
+    parts = split_packages(pkg)
+    if parts is None:
+        return analyse(pkg)
+    return MultiReport(pkg.name, [analyse(p) for p in parts])
 
 
 def _combine(facts: Facts, saved: bool) -> tuple[list[Hit], str]:
@@ -778,15 +962,15 @@ def _combine(facts: Facts, saved: bool) -> tuple[list[Hit], str]:
     return findings, top
 
 
-def scan_path(path: str | Path) -> Report:
+def scan_path(path: str | Path) -> Report | MultiReport:
     p = Path(path)
     if p.is_dir():
-        return analyse(read_folder(p))
-    return analyse(read_zip(p.read_bytes(), p.name))
+        return analyse_any(read_folder(p))
+    return analyse_any(read_zip(p.read_bytes(), p.name))
 
 
-def scan_bytes(data: bytes, name: str = "addon.zip") -> Report:
-    return analyse(read_zip(data, name))
+def scan_bytes(data: bytes, name: str = "addon.zip") -> Report | MultiReport:
+    return analyse_any(read_zip(data, name))
 
 
 # --------------------------------------------------------------------------- WeakAuras strings

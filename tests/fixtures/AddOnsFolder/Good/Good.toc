@@ -1,0 +1,4 @@
+## Interface: 16001
+## Title: Good
+## Version: 2.0
+Good.lua

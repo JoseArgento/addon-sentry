@@ -9,7 +9,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const NAME = "name", NUMBER = "number", STRING = "string", OP = "op", KEYWORD = "keyword", COMMENT = "comment";
   const KEYWORDS = new Set("and break do else elseif end false for function goto if in local nil not or repeat return then true until while".split(" "));
   const OPS = ["...", "..", "==", "~=", "<=", ">=", "<<", ">>", "//", "::", ..."+-*/%^#&~|<>=(){}[];:,.".split("")];
@@ -504,6 +504,28 @@
       return { name, files, hits: [...hits.values()], entries: infos.filter((x) => !x.filename.endsWith("/")).length, totalBytes: total };
     }
 
+    // A folder picked or dropped in the browser: items are { path, size, read: async () => Uint8Array }.
+    // Same checks as read_folder in Python (dot files skipped, executables and odd files flagged), without .pkgmeta.
+    async function readFiles(name, items) {
+      const files = new Map();
+      const hits = new Map();
+      const hit = hitAdder(hits);
+      let total = 0, count = 0;
+      const sorted = [...items].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+      if (sorted.length > MAX_ENTRIES) throw new ScanError(`too many files in the folder (${sorted.length})`);
+      for (const it of sorted) {
+        const [path, escapes] = safeMember(it.path);
+        if (path.split("/").some((part) => part.startsWith("."))) continue;
+        count++;
+        if (escapes) { hit("PKG_PATH_TRAVERSAL", it.path, "path leaves the folder"); continue; }
+        classify(path, hit);
+        total += it.size;
+        if (total > MAX_TOTAL) throw new ScanError("the folder holds more than 300 MB; refusing to scan it");
+        if (wanted(path) && it.size <= MAX_FILE) files.set(path, await it.read());
+      }
+      return { name, files, hits: [...hits.values()], entries: count, totalBytes: total };
+    }
+
     // -------------------------------------------------------------- units
 
     const decoder = new TextDecoder("utf-8");
@@ -879,6 +901,104 @@
       return [tocs, loaded, saved];
     }
 
+    // -------------------------------------------------------------- does it load in Forever? (port of forever_check & co.)
+
+    const LOOSE = "__loose__";
+    const pyFormat = (s, fields) => s.replace(/\{(\w+)\}/g, (m, k) => (k in fields ? String(fields[k]) : m));
+
+    function tocDirs(files) {
+      const dirs = new Set();
+      for (const p of files.keys()) if (p.toLowerCase().endsWith(".toc")) dirs.add(dirname(p));
+      const depth = (d) => (d ? (d.match(/\//g) || []).length : -1);
+      return [...dirs].sort((a, b) => depth(a) - depth(b) || (a < b ? -1 : a > b ? 1 : 0));
+    }
+    function addonRoots(files) {
+      const roots = [];
+      for (const d of tocDirs(files)) if (!roots.some((r) => r === "" || d === r || d.startsWith(r + "/"))) roots.push(d);
+      return roots;
+    }
+    function flavorOf(interfaces, lang) {
+      for (const v of interfaces) for (const [lo, hi, names] of R.forever.flavors) if (lo <= v && v <= hi) return names[lang];
+      return { es: "otra versión", en: "another version" }[lang];
+    }
+    const numbers = (s) => (s.match(/\d+/g) || []).map((x) => parseInt(x, 10));
+
+    function foreverCheck(files, root, name) {
+      const prefix = root ? root + "/" : "";
+      const tocs = [...files.keys()].filter((p) => p.toLowerCase().endsWith(".toc") && dirname(p) === root).sort();
+      const out = { status: "none", name, toc: "", tocs: tocs.map(basename).join(", "), interface: "" };
+      if (!tocs.length) return out;
+      const lower = new Map(tocs.map((t) => [basename(t).toLowerCase(), t]));
+      let chosen = null;
+      for (const suffix of R.forever.toc_suffixes) { const c = lower.get(`${name}${suffix}.toc`.toLowerCase()); if (c) { chosen = c; break; } }
+      if (!chosen) { out.status = "no_toc"; out.rename = tocStem(tocs); return out; }
+      out.toc = chosen.slice(prefix.length);
+      const keyed = new Map();
+      let allow = null;
+      const exclude = new Set();
+      for (const raw of decode(files.get(chosen)).split(/\r\n|\r|\n/)) {
+        const line = strip(raw);
+        if (!line.startsWith("##")) continue;
+        const idx = line.indexOf(":");
+        const key = strip(idx < 0 ? line.slice(2) : line.slice(2, idx)).toLowerCase();
+        const value = strip(idx < 0 ? "" : line.slice(idx + 1));
+        if (R.forever.interface_keys.includes(key)) { if (!keyed.has(key)) keyed.set(key, numbers(value)); }
+        else if (key === "allowloadgametype") { allow = allow || new Set(); for (const v of value.split(",")) if (strip(v)) allow.add(strip(v).toLowerCase()); }
+        else if (key === "excludeloadgametype") { for (const v of value.split(",")) if (strip(v)) exclude.add(strip(v).toLowerCase()); }
+      }
+      const gameTypes = ["camelot", "forever", "mainline"];
+      if ((allow !== null && !gameTypes.some((g) => allow.has(g))) || gameTypes.some((g) => exclude.has(g))) { out.status = "excluded"; return out; }
+      let interfaces = [];
+      for (const k of R.forever.interface_keys) if (keyed.get(k) && keyed.get(k).length) { interfaces = keyed.get(k); break; }
+      out.interface = interfaces.join(", ");
+      const [lo, hi] = R.forever.interface_range;
+      if (!interfaces.length) out.status = "unknown";
+      else if (interfaces.some((v) => lo <= v && v <= hi)) out.status = "loads";
+      else out.status = "outdated";
+      return out;
+    }
+
+    function tocStem(tocs) {
+      const rx = new RegExp(R.forever.flavor_suffix, "i");
+      const stems = tocs.map((t) => basename(t).slice(0, -4));
+      const plain = stems.filter((s) => !rx.test(s));
+      return plain.length ? plain[0] : stems[0].replace(rx, "");
+    }
+
+    function foreverDict(check, lang) {
+      const [label, detail] = R.forever.load[check.status][lang];
+      const fields = Object.assign({}, check, { flavor: flavorOf(numbers(check.interface), lang) });
+      return { status: check.status, text: label, detail: pyFormat(detail, fields), toc: check.toc, interface: check.interface };
+    }
+
+    function splitPackages(pkg) {
+      const roots = addonRoots(pkg.files);
+      if (roots.length < 2) return null;
+      const groups = new Map(roots.map((r) => [r, { name: basename(r), files: new Map(), hits: [], entries: 0, totalBytes: 0 }]));
+      const loose = { name: LOOSE, files: new Map(), hits: [], entries: 0, totalBytes: 0 };
+      const owner = (path) => { for (const r of roots) if (path === r || path.startsWith(r + "/")) return groups.get(r); return loose; };
+      for (const [path, data] of pkg.files) owner(path).files.set(path, data);
+      const all = [...groups.values(), loose];
+      for (const h of pkg.hits) {
+        const split = new Map();
+        for (const e of h.evidence) {
+          const g = owner(safeMember(e.file)[0]);
+          if (!split.has(g)) split.set(g, { id: h.id, evidence: [] });
+          split.get(g).evidence.push(e);
+        }
+        for (const g of all) if (split.has(g)) g.hits.push(split.get(g));
+      }
+      for (const g of all) {
+        const extra = new Set();
+        for (const h of g.hits) for (const e of h.evidence) if (!g.files.has(e.file)) extra.add(e.file);
+        g.entries = g.files.size + extra.size;
+        g.totalBytes = [...g.files.values()].reduce((s, b) => s + b.length, 0);
+      }
+      const out = [...groups.values()];
+      if (loose.files.size || loose.hits.length) out.push(loose);
+      return out;
+    }
+
     // -------------------------------------------------------------- analyse
 
     function analyse(pkg) {
@@ -907,7 +1027,44 @@
       };
       const caps = {};
       for (const c of Object.keys(R.capabilities)) caps[c] = facts.caps.get(c) || [];
-      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2 };
+      const roots = addonRoots(pkg.files);
+      const root = roots.length === 1 ? roots[0] : "";
+      const name = root ? basename(root) : pkg.name.replace(/\.zip$/i, "");
+      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2, forever: foreverCheck(pkg.files, root, name) };
+    }
+
+    function analyseAny(pkg) {
+      const parts = splitPackages(pkg);
+      if (parts === null) return analyse(pkg);
+      return { multi: true, target: pkg.name, reports: parts.map(analyse) };
+    }
+
+    function multiToDict(m, lang) {
+      const reports = m.reports.map((r) => toDict(r, lang));
+      let top = "info";
+      for (const r of m.reports) if (ORDER[r.severity] > ORDER[top]) top = r.severity;
+      const summary = m.reports.map((r, i) => {
+        const d = reports[i];
+        const a = r.addons[0] || {};
+        return {
+          name: d.target,
+          title: a.title || d.target,
+          version: a.version || "",
+          verdict: d.verdict,
+          forever: { status: d.forever.status, text: d.forever.text },
+          capabilities: d.capabilities.map((c) => ({ id: c.id, text: R.capability_short[c.id][lang] })),
+        };
+      });
+      return {
+        tool: { name: "addon-sentry", version: VERSION },
+        target: m.target,
+        multi: true,
+        verdict: { level: top, text: R.verdicts[top][lang] },
+        summary,
+        reports,
+        stats: { addons: m.reports.filter((r) => r.target !== LOOSE).length, files: reports.reduce((s, d) => s + d.stats.files, 0), lines: reports.reduce((s, d) => s + d.stats.lines, 0) },
+        disclaimer: R.disclaimer[lang],
+      };
     }
 
     function combine(facts, saved) {
@@ -939,10 +1096,12 @@
     }
 
     function toDict(report, lang) {
+      if (report.multi) return multiToDict(report, lang);
       return {
         tool: { name: "addon-sentry", version: VERSION },
-        target: report.target,
+        target: report.target === LOOSE ? R.audit[lang].loose : report.target,
         verdict: { level: report.severity, text: R.verdicts[report.severity][lang] },
+        forever: report.forever ? foreverDict(report.forever, lang) : null,
         addons: report.addons,
         capabilities: Object.entries(report.capabilities)
           .filter(([, evs]) => evs.length)
@@ -963,7 +1122,7 @@
 
     async function scanZip(buffer, name, lang) {
       const pkg = await readZip(buffer, name || "addon.zip");
-      return toDict(analyse(pkg), lang || "es");
+      return toDict(analyseAny(pkg), lang || "es");
     }
 
     // -------------------------------------------------------------- WeakAuras strings (port of auras.py)
@@ -1485,7 +1644,7 @@
       return toDict(await analyseAura(text), lang || "es");
     }
 
-    return { scanZip, scanAura, readZip, analyse, analyseAura, toDict };
+    return { scanZip, scanAura, readZip, readFiles, analyse, analyseAny, analyseAura, toDict };
   }
 
   return { VERSION, ScanError, tokenize, scan, make };

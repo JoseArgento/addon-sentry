@@ -121,6 +121,26 @@ h2 { font: 800 22px/1 var(--display); letter-spacing: 0.04em; text-transform: up
 details.quiet summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 details.quiet[open] summary { margin-bottom: 10px; }
 
+.forever { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0; font-size: 15px; }
+.forever b { font: 500 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; border: 1px solid currentColor; }
+.forever span { color: var(--muted); max-width: 70ch; }
+.fv-loads { color: var(--ok); } .fv-outdated, .fv-no_toc, .fv-none { color: var(--high); } .fv-excluded, .fv-unknown { color: var(--muted); }
+.audit { width: 100%; border-collapse: collapse; font-size: 14px; }
+.audit th { text-align: left; font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); }
+.audit td { padding: 8px 10px 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent); vertical-align: top; }
+.audit td.name { font-weight: 700; }
+.audit td.name small { display: block; font-weight: 400; color: var(--muted); }
+.audit td.muted { color: var(--muted); }
+.audit tr { cursor: pointer; }
+.audit tr:hover td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.audit .pill { display: inline-block; font: 700 13px var(--body); padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.audit .pill.lvl-low, .audit .pill.lvl-info { color: var(--ok); }
+.audit-wrap { overflow-x: auto; }
+.sub { border-top: 2px solid var(--rule); padding-top: 18px; display: grid; gap: 16px; scroll-margin-top: 16px; }
+@media (min-width: 561px) { .sub .sheet-head { grid-template-columns: 1fr auto; } }
+.sub .stamp { font-size: 20px; border-width: 3px; padding: 6px 12px 4px; transform: rotate(-4deg); }
+.pick.secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+.tray-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .disclaimer { border-top: 1px solid var(--rule); padding-top: 14px; margin: 0; font-size: 14px; color: var(--muted); max-width: 75ch; }
 .error { border-left: 5px solid var(--crit); padding: 10px 14px; background: color-mix(in srgb, var(--crit) 8%, transparent); border-radius: 0 6px 6px 0; margin: 0; }
 .busy { color: var(--muted); font: 500 14px var(--mono); }
@@ -153,11 +173,18 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         <strong id="tray-title" data-t="drop"></strong>
         <span data-t="dropHint"></span>
       </div>
-      <label class="pick">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
-        <span data-t="choose"></span>
-        <input type="file" id="file" accept=".zip,application/zip">
-      </label>
+      <div class="tray-actions">
+        <label class="pick">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
+          <span data-t="choose"></span>
+          <input type="file" id="file" accept=".zip,application/zip">
+        </label>
+        <label class="pick secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span data-t="chooseFolder"></span>
+          <input type="file" id="folder" webkitdirectory directory multiple>
+        </label>
+      </div>
     </div>
     <details class="paste" id="paste">
       <summary><span class="paste-title" data-t="pasteTitle"></span><span data-t="pasteHint"></span></summary>
@@ -196,7 +223,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   <footer data-t="footer"></footer>
 </div>
 
-<script>var ADDON_SENTRY_RULES = {"capabilities": {"money": {"api": ["AcceptTrade", "AddTradeMoney", "AutoLootMailItem", "AutoStoreGuildBankItem", "BuyMerchantItem", "BuybackItem", "C_AuctionHouse.CancelAuction", "C_AuctionHouse.ConfirmCommoditiesPurchase", "C_AuctionHouse.PlaceBid", "C_AuctionHouse.PostCommodity", "C_AuctionHouse.PostItem", "C_AuctionHouse.StartCommoditiesPurchase", "C_BlackMarket.ItemPlaceBid", "C_Container.UseContainerItem", "CancelAuction", "ClickSendMailItemButton", "ClickTargetTradeButton", "ClickTradeButton", "DeleteCursorItem", "DepositGuildBankMoney", "DropItemOnUnit", "InitiateTrade", "PickupGuildBankItem", "PickupPlayerMoney", "PlaceAuctionBid", "PostAuction", "ReturnInboxItem", "SendMail", "SetSendMailCOD", "SetSendMailMoney", "SetTradeMoney", "SplitGuildBankItem", "StartAuction", "TakeInboxItem", "TakeInboxMoney", "WithdrawGuildBankMoney"], "en": "Moves gold or items (mail, trade, auction house, guild bank, vendors, deleting items)", "es": "Mueve oro u objetos (correo, comercio, casa de subastas, banco de la guild, vendedores, borrar objetos)"}, "chat": {"api": ["BNSendGameData", "BNSendWhisper", "C_BattleNet.SendGameData", "C_BattleNet.SendWhisper", "C_ChatInfo.RegisterAddonMessagePrefix", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.SendAddonMessageLogged", "C_ChatInfo.SendChatMessage", "JoinChannelByName", "JoinPermanentChannel", "JoinTemporaryChannel", "SendAddonMessage", "SendChatMessage"], "en": "Sends chat, whispers or hidden addon messages", "es": "Manda mensajes de chat, susurros o mensajes ocultos de addon"}, "code": {"api": ["RunScript", "getfenv", "load", "loadstring", "setfenv", "setmetatable(_G"], "en": "Builds and runs code at runtime", "es": "Arma y ejecuta código mientras corre"}, "account": {"api": ["BNGetFriendInfo", "BNGetInfo", "BNGetNumFriends", "C_BattleNet.GetAccountInfoByGUID", "C_BattleNet.GetAccountInfoByID", "C_BattleNet.GetFriendAccountInfo", "C_FriendList.GetFriendInfoByIndex", "C_FriendList.GetNumFriends", "GetGuildBankMoney", "GetGuildRosterInfo", "GetMoney"], "en": "Reads account data (BattleTag, friends list, guild roster, gold)", "es": "Lee datos de la cuenta (BattleTag, lista de amigos, roster de la guild, oro)"}, "sabotage": {"api": ["AbandonQuest", "AbandonSkill", "C_GuildInfo.Demote", "C_GuildInfo.Leave", "C_GuildInfo.RemoveFromGuild", "C_PartyInfo.LeaveParty", "C_QuestLog.AbandonQuest", "ForceQuit", "GuildDemote", "GuildDisband", "GuildLeave", "GuildSetLeader", "GuildUninvite", "LeaveParty", "Logout", "Quit"], "en": "Can disband or kick from the guild, log out, leave the group, abandon a pet or abandon progress", "es": "Puede disolver la guild o echar gente, desconectarte, salir del grupo, abandonar una mascota o abandonar progreso"}, "profiling": {"api": ["C_PaperDollInfo.GetInspectItemLevel", "GetComparisonAchievementPoints", "GetComparisonCategoryNumAchievements", "GetComparisonStatistic", "GetInspectHonorData", "GetPlayerInfoByGUID", "NotifyInspect", "SetAchievementComparisonUnit"], "en": "Inspects other players or reads their statistics", "es": "Inspecciona a otros jugadores o lee sus estadísticas"}, "frames": {"api": ["EnumerateFrames", "GetButtonMetatable", "GetEditBoxMetatable", "GetFontStringMetatable", "GetFrameMetatable"], "en": "Walks through or changes every window of the interface (common in skins)", "es": "Recorre o modifica todas las ventanas de la interfaz (común en los skins)"}, "macros": {"api": ["CreateMacro", "DeleteMacro", "EditMacro", "SaveBindings", "SetBinding", "SetBindingClick", "SetBindingItem", "SetBindingMacro", "SetBindingSpell", "SetOverrideBinding", "SetOverrideBindingClick"], "en": "Creates or edits macros and key bindings", "es": "Crea o modifica macros y atajos de teclado"}}, "sensitive_hook_targets": ["AcceptTrade", "BuyMerchantItem", "C_AuctionHouse.ConfirmCommoditiesPurchase", "C_AuctionHouse.GetCommoditySearchResultInfo", "C_AuctionHouse.GetItemSearchResultInfo", "C_AuctionHouse.PlaceBid", "C_AuctionHouse.StartCommoditiesPurchase", "C_ChatInfo.SendChatMessage", "ChatFrame_OnHyperlinkShow", "GetAuctionItemInfo", "GetCoinTextureString", "GetMoney", "GetMoneyString", "InitiateTrade", "MoneyFrame_Update", "PlaceAuctionBid", "SendChatMessage", "SendMail", "SetItemRef", "SetMoneyFrameColor", "SetTradeMoney", "StaticPopup_Hide", "StaticPopup_OnClick", "StaticPopup_Show", "StaticPopup_Visible"], "sensitive_frame_prefixes": ["StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "TradeFrame", "SendMailFrame", "SendMailMailButton", "MailFrame", "OpenMailFrame", "InboxFrame", "AuctionHouseFrame", "AuctionFrame", "GuildBankFrame", "MerchantFrame"], "hiding_filter_events": ["CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_CURRENCY", "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "CHAT_MSG_SYSTEM", "CHAT_MSG_TRADESKILLS", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM"], "remote_input_events": ["BN_CHAT_MSG_ADDON", "CHAT_MSG_ADDON", "CHAT_MSG_ADDON_LOGGED", "CHAT_MSG_BN_WHISPER", "CHAT_MSG_CHANNEL", "CHAT_MSG_GUILD", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_SAY", "CHAT_MSG_WHISPER", "CHAT_MSG_YELL"], "executable_extensions": [".app", ".bat", ".cmd", ".com", ".cpl", ".dll", ".dmg", ".exe", ".hta", ".jar", ".js", ".jse", ".lnk", ".msi", ".msp", ".pkg", ".ps1", ".psm1", ".reg", ".scr", ".sys", ".vbe", ".vbs", ".wsf", ".wsh"], "script_extensions": [".command", ".dylib", ".pl", ".py", ".rb", ".sh", ".so"], "archive_extensions": [".7z", ".bz2", ".cab", ".gz", ".iso", ".rar", ".tar", ".tgz", ".xz", ".zip"], "addon_extensions": [".blp", ".bmp", ".code-workspace", ".csv", ".editorconfig", ".gif", ".gitattributes", ".gitignore", ".gitmodules", ".htm", ".html", ".jpeg", ".jpg", ".json", ".license", ".lua", ".luacheckrc", ".luarc", ".m2", ".md", ".mp3", ".ogg", ".otf", ".pkgmeta", ".png", ".svg", ".tga", ".toc", ".ttf", ".txt", ".wav", ".xml", ".yaml", ".yml"], "severities": ["info", "low", "medium", "high", "critical"], "severity_names": {"en": {"info": "info", "low": "low", "medium": "medium", "high": "high", "critical": "critical"}, "es": {"info": "info", "low": "bajo", "medium": "medio", "high": "alto", "critical": "crítico"}}, "findings": {"PKG_EXECUTABLE": {"severity": "critical", "en": ["Executable file in the addon", "WoW never runs files like this from an addon. A download that asks you to run one is almost always malware."], "es": ["Archivo ejecutable dentro del addon", "WoW nunca ejecuta archivos así desde un addon. Si una descarga te pide abrir uno, casi siempre es malware."]}, "PKG_PATH_TRAVERSAL": {"severity": "critical", "en": ["File path escapes the addon folder", "Unzipping this would write files outside the folder (\"zip slip\"), for example into your startup folder."], "es": ["Ruta que sale de la carpeta del addon", "Al descomprimirlo escribiría archivos fuera de la carpeta (\"zip slip\"), por ejemplo en el inicio de Windows."]}, "PKG_SCRIPT": {"severity": "low", "en": ["Developer script in the addon", "Build or tooling scripts are common in source repositories. The game never runs them; do not run them yourself unless you know what they do."], "es": ["Script de desarrollo dentro del addon", "Los scripts de build o herramientas son comunes en los repos. El juego nunca los ejecuta; no los ejecutes vos salvo que sepas qué hacen."]}, "PKG_ENCRYPTED": {"severity": "medium", "en": ["Password-protected files", "The scanner cannot see inside them, and addons have no reason to ship encrypted files."], "es": ["Archivos con contraseña", "El escáner no puede ver qué tienen, y un addon no tiene motivo para traer archivos encriptados."]}, "PKG_NESTED_ARCHIVE": {"severity": "medium", "en": ["Archive inside the archive", "The scanner cannot see inside it. Addons do not need nested archives; check where it came from."], "es": ["Archivo comprimido adentro del comprimido", "El escáner no puede ver qué tiene. Los addons no necesitan comprimidos adentro; fijate de dónde salió."]}, "PKG_UNUSUAL_FILE": {"severity": "low", "en": ["File type the game does not use", "Not dangerous by itself, but unusual in an addon."], "es": ["Tipo de archivo que el juego no usa", "No es peligroso por sí solo, pero es raro en un addon."]}, "PKG_NO_TOC": {"severity": "low", "en": ["No .toc file", "Without a .toc the game does not load it, so this is not a working addon as packaged."], "es": ["No hay archivo .toc", "Sin .toc el juego no lo carga: así como viene no es un addon que funcione."]}, "PKG_UNLOADED_LUA": {"severity": "info", "en": ["Lua file not loaded by any .toc", "The game will not run it unless another file loads it."], "es": ["Archivo Lua que ningún .toc carga", "El juego no lo ejecuta, salvo que otro archivo lo cargue."]}, "REMOTE_CODE": {"severity": "critical", "en": ["Can run code sent by other players", "It listens to chat or addon messages and also builds and runs code. Whoever sends the right message could run anything as you: trade away your gold, send mail, whisper scams to your friends."], "es": ["Puede ejecutar código que manden otros jugadores", "Escucha mensajes de chat o de addons y además arma y ejecuta código. Quien mande el mensaje justo podría hacer cualquier cosa en tu nombre: comerciar tu oro, mandar correo, susurrar estafas a tus amigos."]}, "OBFUSCATED_LOADER": {"severity": "critical", "en": ["Hidden code that runs more code", "Part of the code is encoded so people cannot read it, and it is decoded and run. Legitimate addons have no reason to do this, and Blizzard's add-on policy forbids hidden code."], "es": ["Código escondido que ejecuta más código", "Una parte del código está codificada para que no se pueda leer, y se decodifica y ejecuta. Un addon legítimo no tiene motivo para hacer esto, y la política de addons de Blizzard prohíbe esconder código."]}, "HIDDEN_MONEY": {"severity": "critical", "en": ["Moves gold or items and hides it", "It can move gold or items and also hides confirmations or chat notices about it. This is the pattern of the auction house scams."], "es": ["Mueve oro u objetos y lo esconde", "Puede mover oro u objetos y además esconde las confirmaciones o los avisos del chat. Es el patrón de las estafas de la casa de subastas."]}, "BLIZZARD_OVERRIDE_SENSITIVE": {"severity": "high", "en": ["Replaces a Blizzard function about money or confirmations", "Replacing this function lets an addon show you something different from what really happens (a price, your gold, a confirmation)."], "es": ["Reemplaza una función de Blizzard de plata o confirmaciones", "Reemplazar esta función permite mostrarte algo distinto de lo que pasa en realidad (un precio, tu oro, una confirmación)."]}, "SENSITIVE_FRAME": {"severity": "low", "en": ["Changes or clicks a money confirmation window", "It changes the behaviour of, or clicks, a window that confirms gold or item movement. Convenience addons do this too (auto-accept); combined with hiding it is a scam pattern."], "es": ["Modifica o aprieta una ventana que confirma plata", "Cambia el comportamiento de una ventana que confirma movimientos de oro u objetos, o la aprieta sola. Los addons de comodidad también lo hacen (aceptar automático); junto con esconder cosas es un patrón de estafa."]}, "MONEY_AND_HIDING": {"severity": "medium", "en": ["Moves gold or items and also filters chat or confirms windows", "Convenience addons do both (auto-sell junk, hide spam, auto-accept). Check that the addon is what it says it is and where you downloaded it."], "es": ["Mueve oro u objetos y además filtra el chat o acepta ventanas solo", "Los addons de comodidad hacen las dos cosas (vender basura, esconder spam, aceptar solo). Fijate que el addon sea lo que dice y de dónde lo bajaste."]}, "LISTENS_AND_RUNS": {"severity": "low", "en": ["Listens to other players and runs code built at runtime", "One file listens to chat or addon messages and another one runs code it builds at runtime. The scanner cannot follow the data between files, so check whether received text reaches the code runner."], "es": ["Escucha a otros jugadores y ejecuta código armado en el momento", "Un archivo escucha mensajes de chat o de addons y otro ejecuta código que arma en el momento. El escáner no puede seguir los datos entre archivos: hay que mirar si el texto recibido llega al que ejecuta."]}, "HIDING_FILTER": {"severity": "low", "en": ["Hides chat messages about gold, loot or whispers", "Chat filters are common (spam blockers), but filtering system, money or whisper messages can hide what an addon did."], "es": ["Esconde mensajes del chat sobre oro, botín o susurros", "Los filtros de chat son comunes (anti-spam), pero filtrar mensajes del sistema, de oro o susurros puede esconder lo que hizo un addon."]}, "SENSITIVE_HOOK": {"severity": "info", "en": ["Hooks a Blizzard function about money or chat", "A hook runs after Blizzard's function; it cannot change it, but it can react (for example hide a window right after it opens)."], "es": ["Se engancha a una función de Blizzard de plata o chat", "El gancho corre después de la función de Blizzard: no la cambia, pero puede reaccionar (por ejemplo cerrar una ventana apenas se abre)."]}, "EXFILTRATION": {"severity": "low", "en": ["Reads your friends list and sends messages", "It reads your Battle.net or in-game friends and can send hidden messages. Showing friends is normal for chat and social addons; sending them somewhere is not."], "es": ["Lee tu lista de amigos y manda mensajes", "Lee tus amigos de Battle.net o del juego y puede mandar mensajes ocultos. Mostrar amigos es normal en addons de chat y sociales; mandarlos a algún lado, no."]}, "DYNAMIC_CODE": {"severity": "low", "en": ["Builds and runs code at runtime", "Normal for developer tools and import strings; otherwise worth a look. What matters is where the code comes from."], "es": ["Arma y ejecuta código mientras corre", "Es normal en herramientas para desarrolladores y en strings de importación; si no, conviene mirarlo. Lo importante es de dónde sale ese código."]}, "INDIRECT_GLOBAL": {"severity": "low", "en": ["Calls functions by computed name", "It looks up game functions with a name built at runtime (e.g. _G[\"Send\"..\"Mail\"]), which hides what it calls from readers and scanners."], "es": ["Llama funciones con un nombre calculado", "Busca funciones del juego con un nombre armado en el momento (por ejemplo _G[\"Send\"..\"Mail\"]), lo que esconde qué llama."]}, "BUILT_API_NAME": {"severity": "high", "en": ["Builds the name of a sensitive function piece by piece", "Splitting the name of a money or chat function into pieces only makes sense to avoid being noticed."], "es": ["Arma de a pedazos el nombre de una función sensible", "Partir en pedazos el nombre de una función de plata o chat solo tiene sentido para que no se note."]}, "OBFUSCATION": {"severity": "medium", "en": ["Hard-to-read code", "Long encoded strings, character-code tricks or scrambled names. Compressed profile data is legitimate, but Blizzard's add-on policy (rule 2) says an addon's code must in no way be hidden or obfuscated."], "es": ["Código difícil de leer", "Strings codificados largos, trucos con códigos de caracteres o nombres revueltos. Los perfiles comprimidos son legítimos, pero la política de addons de Blizzard (regla 2) dice que el código de un addon no puede estar escondido ni ofuscado de ninguna forma."]}, "SABOTAGE": {"severity": "low", "en": ["Can disband or kick from the guild, or log you out", "Guild tools legitimately kick and demote; other addons have no reason to."], "es": ["Puede disolver o echar gente de la guild, o desconectarte", "Las herramientas de guild echan y degradan gente legítimamente; otros addons no tienen por qué."]}, "GUILD_DISBAND": {"severity": "high", "en": ["Can disband the guild", "Disbanding is a one-click, irreversible action that almost no addon needs."], "es": ["Puede disolver la guild", "Disolver es una acción irreversible que casi ningún addon necesita."]}, "PROFILING": {"severity": "medium", "en": ["Collects statistics about other players and saves them", "It reads other players' statistics (such as gold earned) and the addon keeps saved data. Check what it stores about people and whether it shares it."], "es": ["Junta estadísticas de otros jugadores y las guarda", "Lee estadísticas de otros jugadores (como el oro ganado) y el addon guarda datos. Fijate qué guarda de la gente y si lo comparte."]}, "MACRO_WRITE": {"severity": "low", "en": ["Creates or edits macros or key bindings", "Normal for action bar and macro addons. A macro can run any command when you press the key."], "es": ["Crea o modifica macros o atajos", "Es normal en addons de barras y macros. Una macro puede ejecutar cualquier comando cuando apretás la tecla."]}, "AURA_BLOCKED": {"severity": "medium", "en": ["Uses something WeakAuras blocks", "WeakAuras does not let aura code use this: it hands the aura an empty stand-in and warns you. A normal aura has no need for it. Either the code is old, or it tries exactly what WeakAuras blocks to stop scams (mail, trade, guild, macros, chat, escaping its sandbox)."], "es": ["Usa cosas que WeakAuras bloquea", "WeakAuras no deja que el código de un aura use esto: le da algo vacío en su lugar y te avisa. Un aura normal no lo necesita. O es código viejo, o intenta justo lo que WeakAuras bloquea para frenar estafas (correo, comercio, hermandad, macros, chat, salirse de su sandbox)."]}, "URL": {"severity": "info", "en": ["Contains links", "Most are the author's site or Discord. Do not paste links from an addon into your browser without checking them."], "es": ["Tiene links", "La mayoría son la web o el Discord del autor. No pegues en el navegador links que te muestre un addon sin revisarlos."]}}, "verdicts": {"critical": {"en": "Dangerous", "es": "Peligroso"}, "high": {"en": "Suspicious", "es": "Sospechoso"}, "medium": {"en": "Review", "es": "Revisar"}, "low": {"en": "No warning signs", "es": "Sin señales de riesgo"}, "info": {"en": "No warning signs", "es": "Sin señales de riesgo"}}, "disclaimer": {"en": "This is an automatic check of the code's patterns. It cannot prove an addon is safe, and a warning is not proof of bad intent. When in doubt, download addons only from their official page.", "es": "Es un chequeo automático de patrones en el código. No puede probar que un addon sea seguro, y una advertencia no prueba mala intención. Ante la duda, bajá los addons solo de su página oficial."}, "aura": {"blocked": ["AbandonSkill", "AcceptTrade", "AddTradeMoney", "C_GuildInfo.Disband", "C_GuildInfo.Uninvite", "C_PetInfo.PetAbandon", "C_TradeInfo.AddTradeMoney", "C_TradeInfo.PickupTradeMoney", "C_TradeInfo.SetTradeMoney", "ChatEdit_ActivateChat", "ChatEdit_OnEnterPressed", "ChatEdit_ParseText", "ChatEdit_SendText", "ChatFrame1", "CreateMacro", "DEFAULT_CHAT_FRAME", "DeleteCursorItem", "DeleteMacro", "DevTools_DumpCommand", "EditMacro", "EnumerateFrames", "GetButtonMetatable", "GetEditBoxMetatable", "GetFontStringMetatable", "GetFrameMetatable", "GuildDisband", "GuildUninvite", "ItemRackEvents", "ItemRackUser", "MailFrame", "MailFrameTab2", "PetAbandon", "PickupPlayerMoney", "PickupTradeMoney", "RegisterNewSlashCommand", "RunScript", "SendMail", "SendMailMailButton", "SendMailMoneyGold", "SetBindingMacro", "SetSendMailMoney", "SetTradeMoney", "SlashCmdList", "TradeFrame", "WeakAurasOptions", "WeakAurasOptionsSaved", "WeakAurasSaved", "getfenv", "hash_SlashCmdList", "loadstring", "pcall", "securecall", "setfenv", "xpcall"], "code_keys": ["alphaFunc", "colorFunc", "custom", "customAnchor", "customAnchorPerUnit", "customDuration", "customGrow", "customIcon", "customName", "customOnLoad", "customOnUnload", "customOverlay1", "customOverlay2", "customOverlay3", "customOverlay4", "customOverlay5", "customOverlay6", "customOverlay7", "customSort", "customStacks", "customText", "customTexture", "customTriggerLogic", "customVariables", "message_custom", "rotateFunc", "scaleFunc", "translateFunc"], "send_chat_types": ["EMOTE", "GUILD", "INSTANCE_CHAT", "OFFICER", "PARTY", "RAID", "RAID_WARNING", "SAY", "SMARTRAID", "WHISPER", "YELL"]}};</script>
+<script>var ADDON_SENTRY_RULES = {"capabilities": {"money": {"api": ["AcceptTrade", "AddTradeMoney", "AutoLootMailItem", "AutoStoreGuildBankItem", "BuyMerchantItem", "BuybackItem", "C_AuctionHouse.CancelAuction", "C_AuctionHouse.ConfirmCommoditiesPurchase", "C_AuctionHouse.PlaceBid", "C_AuctionHouse.PostCommodity", "C_AuctionHouse.PostItem", "C_AuctionHouse.StartCommoditiesPurchase", "C_BlackMarket.ItemPlaceBid", "C_Container.UseContainerItem", "CancelAuction", "ClickSendMailItemButton", "ClickTargetTradeButton", "ClickTradeButton", "DeleteCursorItem", "DepositGuildBankMoney", "DropItemOnUnit", "InitiateTrade", "PickupGuildBankItem", "PickupPlayerMoney", "PlaceAuctionBid", "PostAuction", "ReturnInboxItem", "SendMail", "SetSendMailCOD", "SetSendMailMoney", "SetTradeMoney", "SplitGuildBankItem", "StartAuction", "TakeInboxItem", "TakeInboxMoney", "WithdrawGuildBankMoney"], "en": "Moves gold or items (mail, trade, auction house, guild bank, vendors, deleting items)", "es": "Mueve oro u objetos (correo, comercio, casa de subastas, banco de la guild, vendedores, borrar objetos)"}, "chat": {"api": ["BNSendGameData", "BNSendWhisper", "C_BattleNet.SendGameData", "C_BattleNet.SendWhisper", "C_ChatInfo.RegisterAddonMessagePrefix", "C_ChatInfo.SendAddonMessage", "C_ChatInfo.SendAddonMessageLogged", "C_ChatInfo.SendChatMessage", "JoinChannelByName", "JoinPermanentChannel", "JoinTemporaryChannel", "SendAddonMessage", "SendChatMessage"], "en": "Sends chat, whispers or hidden addon messages", "es": "Manda mensajes de chat, susurros o mensajes ocultos de addon"}, "code": {"api": ["RunScript", "getfenv", "load", "loadstring", "setfenv", "setmetatable(_G"], "en": "Builds and runs code at runtime", "es": "Arma y ejecuta código mientras corre"}, "account": {"api": ["BNGetFriendInfo", "BNGetInfo", "BNGetNumFriends", "C_BattleNet.GetAccountInfoByGUID", "C_BattleNet.GetAccountInfoByID", "C_BattleNet.GetFriendAccountInfo", "C_FriendList.GetFriendInfoByIndex", "C_FriendList.GetNumFriends", "GetGuildBankMoney", "GetGuildRosterInfo", "GetMoney"], "en": "Reads account data (BattleTag, friends list, guild roster, gold)", "es": "Lee datos de la cuenta (BattleTag, lista de amigos, roster de la guild, oro)"}, "sabotage": {"api": ["AbandonQuest", "AbandonSkill", "C_GuildInfo.Demote", "C_GuildInfo.Leave", "C_GuildInfo.RemoveFromGuild", "C_PartyInfo.LeaveParty", "C_QuestLog.AbandonQuest", "ForceQuit", "GuildDemote", "GuildDisband", "GuildLeave", "GuildSetLeader", "GuildUninvite", "LeaveParty", "Logout", "Quit"], "en": "Can disband or kick from the guild, log out, leave the group, abandon a pet or abandon progress", "es": "Puede disolver la guild o echar gente, desconectarte, salir del grupo, abandonar una mascota o abandonar progreso"}, "profiling": {"api": ["C_PaperDollInfo.GetInspectItemLevel", "GetComparisonAchievementPoints", "GetComparisonCategoryNumAchievements", "GetComparisonStatistic", "GetInspectHonorData", "GetPlayerInfoByGUID", "NotifyInspect", "SetAchievementComparisonUnit"], "en": "Inspects other players or reads their statistics", "es": "Inspecciona a otros jugadores o lee sus estadísticas"}, "frames": {"api": ["EnumerateFrames", "GetButtonMetatable", "GetEditBoxMetatable", "GetFontStringMetatable", "GetFrameMetatable"], "en": "Walks through or changes every window of the interface (common in skins)", "es": "Recorre o modifica todas las ventanas de la interfaz (común en los skins)"}, "macros": {"api": ["CreateMacro", "DeleteMacro", "EditMacro", "SaveBindings", "SetBinding", "SetBindingClick", "SetBindingItem", "SetBindingMacro", "SetBindingSpell", "SetOverrideBinding", "SetOverrideBindingClick"], "en": "Creates or edits macros and key bindings", "es": "Crea o modifica macros y atajos de teclado"}}, "sensitive_hook_targets": ["AcceptTrade", "BuyMerchantItem", "C_AuctionHouse.ConfirmCommoditiesPurchase", "C_AuctionHouse.GetCommoditySearchResultInfo", "C_AuctionHouse.GetItemSearchResultInfo", "C_AuctionHouse.PlaceBid", "C_AuctionHouse.StartCommoditiesPurchase", "C_ChatInfo.SendChatMessage", "ChatFrame_OnHyperlinkShow", "GetAuctionItemInfo", "GetCoinTextureString", "GetMoney", "GetMoneyString", "InitiateTrade", "MoneyFrame_Update", "PlaceAuctionBid", "SendChatMessage", "SendMail", "SetItemRef", "SetMoneyFrameColor", "SetTradeMoney", "StaticPopup_Hide", "StaticPopup_OnClick", "StaticPopup_Show", "StaticPopup_Visible"], "sensitive_frame_prefixes": ["StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4", "TradeFrame", "SendMailFrame", "SendMailMailButton", "MailFrame", "OpenMailFrame", "InboxFrame", "AuctionHouseFrame", "AuctionFrame", "GuildBankFrame", "MerchantFrame"], "hiding_filter_events": ["CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_CURRENCY", "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "CHAT_MSG_SYSTEM", "CHAT_MSG_TRADESKILLS", "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM"], "remote_input_events": ["BN_CHAT_MSG_ADDON", "CHAT_MSG_ADDON", "CHAT_MSG_ADDON_LOGGED", "CHAT_MSG_BN_WHISPER", "CHAT_MSG_CHANNEL", "CHAT_MSG_GUILD", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_SAY", "CHAT_MSG_WHISPER", "CHAT_MSG_YELL"], "executable_extensions": [".app", ".bat", ".cmd", ".com", ".cpl", ".dll", ".dmg", ".exe", ".hta", ".jar", ".js", ".jse", ".lnk", ".msi", ".msp", ".pkg", ".ps1", ".psm1", ".reg", ".scr", ".sys", ".vbe", ".vbs", ".wsf", ".wsh"], "script_extensions": [".command", ".dylib", ".pl", ".py", ".rb", ".sh", ".so"], "archive_extensions": [".7z", ".bz2", ".cab", ".gz", ".iso", ".rar", ".tar", ".tgz", ".xz", ".zip"], "addon_extensions": [".blp", ".bmp", ".code-workspace", ".csv", ".editorconfig", ".gif", ".gitattributes", ".gitignore", ".gitmodules", ".htm", ".html", ".jpeg", ".jpg", ".json", ".license", ".lua", ".luacheckrc", ".luarc", ".m2", ".md", ".mp3", ".ogg", ".otf", ".pkgmeta", ".png", ".svg", ".tga", ".toc", ".ttf", ".txt", ".wav", ".xml", ".yaml", ".yml"], "severities": ["info", "low", "medium", "high", "critical"], "severity_names": {"en": {"info": "info", "low": "low", "medium": "medium", "high": "high", "critical": "critical"}, "es": {"info": "info", "low": "bajo", "medium": "medio", "high": "alto", "critical": "crítico"}}, "findings": {"PKG_EXECUTABLE": {"severity": "critical", "en": ["Executable file in the addon", "WoW never runs files like this from an addon. A download that asks you to run one is almost always malware."], "es": ["Archivo ejecutable dentro del addon", "WoW nunca ejecuta archivos así desde un addon. Si una descarga te pide abrir uno, casi siempre es malware."]}, "PKG_PATH_TRAVERSAL": {"severity": "critical", "en": ["File path escapes the addon folder", "Unzipping this would write files outside the folder (\"zip slip\"), for example into your startup folder."], "es": ["Ruta que sale de la carpeta del addon", "Al descomprimirlo escribiría archivos fuera de la carpeta (\"zip slip\"), por ejemplo en el inicio de Windows."]}, "PKG_SCRIPT": {"severity": "low", "en": ["Developer script in the addon", "Build or tooling scripts are common in source repositories. The game never runs them; do not run them yourself unless you know what they do."], "es": ["Script de desarrollo dentro del addon", "Los scripts de build o herramientas son comunes en los repos. El juego nunca los ejecuta; no los ejecutes vos salvo que sepas qué hacen."]}, "PKG_ENCRYPTED": {"severity": "medium", "en": ["Password-protected files", "The scanner cannot see inside them, and addons have no reason to ship encrypted files."], "es": ["Archivos con contraseña", "El escáner no puede ver qué tienen, y un addon no tiene motivo para traer archivos encriptados."]}, "PKG_NESTED_ARCHIVE": {"severity": "medium", "en": ["Archive inside the archive", "The scanner cannot see inside it. Addons do not need nested archives; check where it came from."], "es": ["Archivo comprimido adentro del comprimido", "El escáner no puede ver qué tiene. Los addons no necesitan comprimidos adentro; fijate de dónde salió."]}, "PKG_UNUSUAL_FILE": {"severity": "low", "en": ["File type the game does not use", "Not dangerous by itself, but unusual in an addon."], "es": ["Tipo de archivo que el juego no usa", "No es peligroso por sí solo, pero es raro en un addon."]}, "PKG_NO_TOC": {"severity": "low", "en": ["No .toc file", "Without a .toc the game does not load it, so this is not a working addon as packaged."], "es": ["No hay archivo .toc", "Sin .toc el juego no lo carga: así como viene no es un addon que funcione."]}, "PKG_UNLOADED_LUA": {"severity": "info", "en": ["Lua file not loaded by any .toc", "The game will not run it unless another file loads it."], "es": ["Archivo Lua que ningún .toc carga", "El juego no lo ejecuta, salvo que otro archivo lo cargue."]}, "REMOTE_CODE": {"severity": "critical", "en": ["Can run code sent by other players", "It listens to chat or addon messages and also builds and runs code. Whoever sends the right message could run anything as you: trade away your gold, send mail, whisper scams to your friends."], "es": ["Puede ejecutar código que manden otros jugadores", "Escucha mensajes de chat o de addons y además arma y ejecuta código. Quien mande el mensaje justo podría hacer cualquier cosa en tu nombre: comerciar tu oro, mandar correo, susurrar estafas a tus amigos."]}, "OBFUSCATED_LOADER": {"severity": "critical", "en": ["Hidden code that runs more code", "Part of the code is encoded so people cannot read it, and it is decoded and run. Legitimate addons have no reason to do this, and Blizzard's add-on policy forbids hidden code."], "es": ["Código escondido que ejecuta más código", "Una parte del código está codificada para que no se pueda leer, y se decodifica y ejecuta. Un addon legítimo no tiene motivo para hacer esto, y la política de addons de Blizzard prohíbe esconder código."]}, "HIDDEN_MONEY": {"severity": "critical", "en": ["Moves gold or items and hides it", "It can move gold or items and also hides confirmations or chat notices about it. This is the pattern of the auction house scams."], "es": ["Mueve oro u objetos y lo esconde", "Puede mover oro u objetos y además esconde las confirmaciones o los avisos del chat. Es el patrón de las estafas de la casa de subastas."]}, "BLIZZARD_OVERRIDE_SENSITIVE": {"severity": "high", "en": ["Replaces a Blizzard function about money or confirmations", "Replacing this function lets an addon show you something different from what really happens (a price, your gold, a confirmation)."], "es": ["Reemplaza una función de Blizzard de plata o confirmaciones", "Reemplazar esta función permite mostrarte algo distinto de lo que pasa en realidad (un precio, tu oro, una confirmación)."]}, "SENSITIVE_FRAME": {"severity": "low", "en": ["Changes or clicks a money confirmation window", "It changes the behaviour of, or clicks, a window that confirms gold or item movement. Convenience addons do this too (auto-accept); combined with hiding it is a scam pattern."], "es": ["Modifica o aprieta una ventana que confirma plata", "Cambia el comportamiento de una ventana que confirma movimientos de oro u objetos, o la aprieta sola. Los addons de comodidad también lo hacen (aceptar automático); junto con esconder cosas es un patrón de estafa."]}, "MONEY_AND_HIDING": {"severity": "medium", "en": ["Moves gold or items and also filters chat or confirms windows", "Convenience addons do both (auto-sell junk, hide spam, auto-accept). Check that the addon is what it says it is and where you downloaded it."], "es": ["Mueve oro u objetos y además filtra el chat o acepta ventanas solo", "Los addons de comodidad hacen las dos cosas (vender basura, esconder spam, aceptar solo). Fijate que el addon sea lo que dice y de dónde lo bajaste."]}, "LISTENS_AND_RUNS": {"severity": "low", "en": ["Listens to other players and runs code built at runtime", "One file listens to chat or addon messages and another one runs code it builds at runtime. The scanner cannot follow the data between files, so check whether received text reaches the code runner."], "es": ["Escucha a otros jugadores y ejecuta código armado en el momento", "Un archivo escucha mensajes de chat o de addons y otro ejecuta código que arma en el momento. El escáner no puede seguir los datos entre archivos: hay que mirar si el texto recibido llega al que ejecuta."]}, "HIDING_FILTER": {"severity": "low", "en": ["Hides chat messages about gold, loot or whispers", "Chat filters are common (spam blockers), but filtering system, money or whisper messages can hide what an addon did."], "es": ["Esconde mensajes del chat sobre oro, botín o susurros", "Los filtros de chat son comunes (anti-spam), pero filtrar mensajes del sistema, de oro o susurros puede esconder lo que hizo un addon."]}, "SENSITIVE_HOOK": {"severity": "info", "en": ["Hooks a Blizzard function about money or chat", "A hook runs after Blizzard's function; it cannot change it, but it can react (for example hide a window right after it opens)."], "es": ["Se engancha a una función de Blizzard de plata o chat", "El gancho corre después de la función de Blizzard: no la cambia, pero puede reaccionar (por ejemplo cerrar una ventana apenas se abre)."]}, "EXFILTRATION": {"severity": "low", "en": ["Reads your friends list and sends messages", "It reads your Battle.net or in-game friends and can send hidden messages. Showing friends is normal for chat and social addons; sending them somewhere is not."], "es": ["Lee tu lista de amigos y manda mensajes", "Lee tus amigos de Battle.net o del juego y puede mandar mensajes ocultos. Mostrar amigos es normal en addons de chat y sociales; mandarlos a algún lado, no."]}, "DYNAMIC_CODE": {"severity": "low", "en": ["Builds and runs code at runtime", "Normal for developer tools and import strings; otherwise worth a look. What matters is where the code comes from."], "es": ["Arma y ejecuta código mientras corre", "Es normal en herramientas para desarrolladores y en strings de importación; si no, conviene mirarlo. Lo importante es de dónde sale ese código."]}, "INDIRECT_GLOBAL": {"severity": "low", "en": ["Calls functions by computed name", "It looks up game functions with a name built at runtime (e.g. _G[\"Send\"..\"Mail\"]), which hides what it calls from readers and scanners."], "es": ["Llama funciones con un nombre calculado", "Busca funciones del juego con un nombre armado en el momento (por ejemplo _G[\"Send\"..\"Mail\"]), lo que esconde qué llama."]}, "BUILT_API_NAME": {"severity": "high", "en": ["Builds the name of a sensitive function piece by piece", "Splitting the name of a money or chat function into pieces only makes sense to avoid being noticed."], "es": ["Arma de a pedazos el nombre de una función sensible", "Partir en pedazos el nombre de una función de plata o chat solo tiene sentido para que no se note."]}, "OBFUSCATION": {"severity": "medium", "en": ["Hard-to-read code", "Long encoded strings, character-code tricks or scrambled names. Compressed profile data is legitimate, but Blizzard's add-on policy (rule 2) says an addon's code must in no way be hidden or obfuscated."], "es": ["Código difícil de leer", "Strings codificados largos, trucos con códigos de caracteres o nombres revueltos. Los perfiles comprimidos son legítimos, pero la política de addons de Blizzard (regla 2) dice que el código de un addon no puede estar escondido ni ofuscado de ninguna forma."]}, "SABOTAGE": {"severity": "low", "en": ["Can disband or kick from the guild, or log you out", "Guild tools legitimately kick and demote; other addons have no reason to."], "es": ["Puede disolver o echar gente de la guild, o desconectarte", "Las herramientas de guild echan y degradan gente legítimamente; otros addons no tienen por qué."]}, "GUILD_DISBAND": {"severity": "high", "en": ["Can disband the guild", "Disbanding is a one-click, irreversible action that almost no addon needs."], "es": ["Puede disolver la guild", "Disolver es una acción irreversible que casi ningún addon necesita."]}, "PROFILING": {"severity": "medium", "en": ["Collects statistics about other players and saves them", "It reads other players' statistics (such as gold earned) and the addon keeps saved data. Check what it stores about people and whether it shares it."], "es": ["Junta estadísticas de otros jugadores y las guarda", "Lee estadísticas de otros jugadores (como el oro ganado) y el addon guarda datos. Fijate qué guarda de la gente y si lo comparte."]}, "MACRO_WRITE": {"severity": "low", "en": ["Creates or edits macros or key bindings", "Normal for action bar and macro addons. A macro can run any command when you press the key."], "es": ["Crea o modifica macros o atajos", "Es normal en addons de barras y macros. Una macro puede ejecutar cualquier comando cuando apretás la tecla."]}, "AURA_BLOCKED": {"severity": "medium", "en": ["Uses something WeakAuras blocks", "WeakAuras does not let aura code use this: it hands the aura an empty stand-in and warns you. A normal aura has no need for it. Either the code is old, or it tries exactly what WeakAuras blocks to stop scams (mail, trade, guild, macros, chat, escaping its sandbox)."], "es": ["Usa cosas que WeakAuras bloquea", "WeakAuras no deja que el código de un aura use esto: le da algo vacío en su lugar y te avisa. Un aura normal no lo necesita. O es código viejo, o intenta justo lo que WeakAuras bloquea para frenar estafas (correo, comercio, hermandad, macros, chat, salirse de su sandbox)."]}, "URL": {"severity": "info", "en": ["Contains links", "Most are the author's site or Discord. Do not paste links from an addon into your browser without checking them."], "es": ["Tiene links", "La mayoría son la web o el Discord del autor. No pegues en el navegador links que te muestre un addon sin revisarlos."]}}, "verdicts": {"critical": {"en": "Dangerous", "es": "Peligroso"}, "high": {"en": "Suspicious", "es": "Sospechoso"}, "medium": {"en": "Review", "es": "Revisar"}, "low": {"en": "No warning signs", "es": "Sin señales de riesgo"}, "info": {"en": "No warning signs", "es": "Sin señales de riesgo"}}, "disclaimer": {"en": "This is an automatic check of the code's patterns. It cannot prove an addon is safe, and a warning is not proof of bad intent. When in doubt, download addons only from their official page.", "es": "Es un chequeo automático de patrones en el código. No puede probar que un addon sea seguro, y una advertencia no prueba mala intención. Ante la duda, bajá los addons solo de su página oficial."}, "forever": {"toc_suffixes": ["_Camelot", "_Forever", "_Mainline", ""], "interface_keys": ["interface-camelot", "interface-forever", "interface-mainline", "interface"], "interface_range": [16000, 16999], "flavor_suffix": "[_-](Mainline|Standard|Forever|Camelot|Vanilla|Classic|TBC|BCC|Wrath|WOTLKC|Cata|Mists)$", "flavors": [[16000, 16999, {"es": "Forever", "en": "Forever"}], [11000, 11999, {"es": "Classic Era / Anniversary", "en": "Classic Era / Anniversary"}], [20000, 29999, {"es": "Burning Crusade Classic", "en": "Burning Crusade Classic"}], [30000, 39999, {"es": "Wrath Classic", "en": "Wrath Classic"}], [40000, 49999, {"es": "Cataclysm Classic", "en": "Cataclysm Classic"}], [50000, 59999, {"es": "Mists Classic", "en": "Mists Classic"}], [100000, 999999, {"es": "retail", "en": "retail"}]], "load": {"loads": {"en": ["Loads in Forever", "{toc} declares Interface {interface}: it is a Forever build."], "es": ["Carga en Forever", "{toc} declara Interface {interface}: es una build para Forever."]}, "outdated": {"en": ["Not a Forever build", "{toc} declares Interface {interface} ({flavor}). Forever marks it as out of date, and even if you load it anyway it will fail wherever it uses API that Forever does not have. Look for a file marked Forever on the addon's page."], "es": ["No es una build de Forever", "{toc} declara Interface {interface} ({flavor}). Forever lo marca como desactualizado y, aunque lo cargues igual, va a fallar donde use API que Forever no tiene. Buscá en la página del addon el archivo marcado para Forever."]}, "no_toc": {"en": ["Forever will not list it", "No TOC that Forever reads: it looks for {name}_Camelot.toc, {name}_Forever.toc, {name}_Mainline.toc or {name}.toc, and the folder has {tocs}. If this is a GitHub zip, the folder must be named {rename}."], "es": ["Forever no lo va a listar", "No tiene un TOC que Forever lea: busca {name}_Camelot.toc, {name}_Forever.toc, {name}_Mainline.toc o {name}.toc, y la carpeta trae {tocs}. Si es un zip de GitHub, la carpeta se tiene que llamar {rename}."]}, "excluded": {"en": ["Excludes Forever on purpose", "{toc} leaves Forever out with AllowLoadGameType/ExcludeLoadGameType, so it does not load there."], "es": ["Excluye a Forever a propósito", "{toc} deja afuera a Forever con AllowLoadGameType/ExcludeLoadGameType, así que ahí no carga."]}, "unknown": {"en": ["No Interface version", "{toc} does not say which game version it is for. Forever will list it as out of date."], "es": ["Sin versión de interfaz", "{toc} no dice para qué versión del juego es. Forever lo va a listar como desactualizado."]}, "none": {"en": ["No TOC at all", "There is no .toc file: the game cannot load this as an addon."], "es": ["Sin TOC", "No hay ningún archivo .toc: el juego no puede cargar esto como addon."]}}}, "audit": {"en": {"title": "Several addons", "count": "{n} addons", "addon": "Addon", "version": "Version", "verdict": "Verdict", "forever": "Forever", "caps": "Can do", "none": "nothing sensitive", "loose": "(loose files)", "worst": "Worst of the set"}, "es": {"title": "Varios addons", "count": "{n} addons", "addon": "Addon", "version": "Versión", "verdict": "Veredicto", "forever": "Forever", "caps": "Puede", "none": "nada sensible", "loose": "(archivos sueltos)", "worst": "El peor del conjunto"}}, "capability_short": {"money": {"es": "oro", "en": "gold"}, "chat": {"es": "mensajes", "en": "messages"}, "code": {"es": "código", "en": "code"}, "account": {"es": "cuenta", "en": "account"}, "sabotage": {"es": "sabotaje", "en": "sabotage"}, "profiling": {"es": "perfilado", "en": "profiling"}, "frames": {"es": "interfaz", "en": "UI"}, "macros": {"es": "macros", "en": "macros"}}, "aura": {"blocked": ["AbandonSkill", "AcceptTrade", "AddTradeMoney", "C_GuildInfo.Disband", "C_GuildInfo.Uninvite", "C_PetInfo.PetAbandon", "C_TradeInfo.AddTradeMoney", "C_TradeInfo.PickupTradeMoney", "C_TradeInfo.SetTradeMoney", "ChatEdit_ActivateChat", "ChatEdit_OnEnterPressed", "ChatEdit_ParseText", "ChatEdit_SendText", "ChatFrame1", "CreateMacro", "DEFAULT_CHAT_FRAME", "DeleteCursorItem", "DeleteMacro", "DevTools_DumpCommand", "EditMacro", "EnumerateFrames", "GetButtonMetatable", "GetEditBoxMetatable", "GetFontStringMetatable", "GetFrameMetatable", "GuildDisband", "GuildUninvite", "ItemRackEvents", "ItemRackUser", "MailFrame", "MailFrameTab2", "PetAbandon", "PickupPlayerMoney", "PickupTradeMoney", "RegisterNewSlashCommand", "RunScript", "SendMail", "SendMailMailButton", "SendMailMoneyGold", "SetBindingMacro", "SetSendMailMoney", "SetTradeMoney", "SlashCmdList", "TradeFrame", "WeakAurasOptions", "WeakAurasOptionsSaved", "WeakAurasSaved", "getfenv", "hash_SlashCmdList", "loadstring", "pcall", "securecall", "setfenv", "xpcall"], "code_keys": ["alphaFunc", "colorFunc", "custom", "customAnchor", "customAnchorPerUnit", "customDuration", "customGrow", "customIcon", "customName", "customOnLoad", "customOnUnload", "customOverlay1", "customOverlay2", "customOverlay3", "customOverlay4", "customOverlay5", "customOverlay6", "customOverlay7", "customSort", "customStacks", "customText", "customTexture", "customTriggerLogic", "customVariables", "message_custom", "rotateFunc", "scaleFunc", "translateFunc"], "send_chat_types": ["EMOTE", "GUILD", "INSTANCE_CHAT", "OFFICER", "PARTY", "RAID", "RAID_WARNING", "SAY", "SMARTRAID", "WHISPER", "YELL"]}};</script>
 <script>/* addon-sentry engine, JavaScript port of src/addon_sentry (lexer, lua, engine).
  * Runs in the browser and in Node 18+. The zip never leaves the device.
  * Rule data comes from rules.json, generated from rules.py, so both engines share it.
@@ -208,7 +235,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const NAME = "name", NUMBER = "number", STRING = "string", OP = "op", KEYWORD = "keyword", COMMENT = "comment";
   const KEYWORDS = new Set("and break do else elseif end false for function goto if in local nil not or repeat return then true until while".split(" "));
   const OPS = ["...", "..", "==", "~=", "<=", ">=", "<<", ">>", "//", "::", ..."+-*/%^#&~|<>=(){}[];:,.".split("")];
@@ -703,6 +730,28 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       return { name, files, hits: [...hits.values()], entries: infos.filter((x) => !x.filename.endsWith("/")).length, totalBytes: total };
     }
 
+    // A folder picked or dropped in the browser: items are { path, size, read: async () => Uint8Array }.
+    // Same checks as read_folder in Python (dot files skipped, executables and odd files flagged), without .pkgmeta.
+    async function readFiles(name, items) {
+      const files = new Map();
+      const hits = new Map();
+      const hit = hitAdder(hits);
+      let total = 0, count = 0;
+      const sorted = [...items].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+      if (sorted.length > MAX_ENTRIES) throw new ScanError(`too many files in the folder (${sorted.length})`);
+      for (const it of sorted) {
+        const [path, escapes] = safeMember(it.path);
+        if (path.split("/").some((part) => part.startsWith("."))) continue;
+        count++;
+        if (escapes) { hit("PKG_PATH_TRAVERSAL", it.path, "path leaves the folder"); continue; }
+        classify(path, hit);
+        total += it.size;
+        if (total > MAX_TOTAL) throw new ScanError("the folder holds more than 300 MB; refusing to scan it");
+        if (wanted(path) && it.size <= MAX_FILE) files.set(path, await it.read());
+      }
+      return { name, files, hits: [...hits.values()], entries: count, totalBytes: total };
+    }
+
     // -------------------------------------------------------------- units
 
     const decoder = new TextDecoder("utf-8");
@@ -1078,6 +1127,104 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       return [tocs, loaded, saved];
     }
 
+    // -------------------------------------------------------------- does it load in Forever? (port of forever_check & co.)
+
+    const LOOSE = "__loose__";
+    const pyFormat = (s, fields) => s.replace(/\{(\w+)\}/g, (m, k) => (k in fields ? String(fields[k]) : m));
+
+    function tocDirs(files) {
+      const dirs = new Set();
+      for (const p of files.keys()) if (p.toLowerCase().endsWith(".toc")) dirs.add(dirname(p));
+      const depth = (d) => (d ? (d.match(/\//g) || []).length : -1);
+      return [...dirs].sort((a, b) => depth(a) - depth(b) || (a < b ? -1 : a > b ? 1 : 0));
+    }
+    function addonRoots(files) {
+      const roots = [];
+      for (const d of tocDirs(files)) if (!roots.some((r) => r === "" || d === r || d.startsWith(r + "/"))) roots.push(d);
+      return roots;
+    }
+    function flavorOf(interfaces, lang) {
+      for (const v of interfaces) for (const [lo, hi, names] of R.forever.flavors) if (lo <= v && v <= hi) return names[lang];
+      return { es: "otra versión", en: "another version" }[lang];
+    }
+    const numbers = (s) => (s.match(/\d+/g) || []).map((x) => parseInt(x, 10));
+
+    function foreverCheck(files, root, name) {
+      const prefix = root ? root + "/" : "";
+      const tocs = [...files.keys()].filter((p) => p.toLowerCase().endsWith(".toc") && dirname(p) === root).sort();
+      const out = { status: "none", name, toc: "", tocs: tocs.map(basename).join(", "), interface: "" };
+      if (!tocs.length) return out;
+      const lower = new Map(tocs.map((t) => [basename(t).toLowerCase(), t]));
+      let chosen = null;
+      for (const suffix of R.forever.toc_suffixes) { const c = lower.get(`${name}${suffix}.toc`.toLowerCase()); if (c) { chosen = c; break; } }
+      if (!chosen) { out.status = "no_toc"; out.rename = tocStem(tocs); return out; }
+      out.toc = chosen.slice(prefix.length);
+      const keyed = new Map();
+      let allow = null;
+      const exclude = new Set();
+      for (const raw of decode(files.get(chosen)).split(/\r\n|\r|\n/)) {
+        const line = strip(raw);
+        if (!line.startsWith("##")) continue;
+        const idx = line.indexOf(":");
+        const key = strip(idx < 0 ? line.slice(2) : line.slice(2, idx)).toLowerCase();
+        const value = strip(idx < 0 ? "" : line.slice(idx + 1));
+        if (R.forever.interface_keys.includes(key)) { if (!keyed.has(key)) keyed.set(key, numbers(value)); }
+        else if (key === "allowloadgametype") { allow = allow || new Set(); for (const v of value.split(",")) if (strip(v)) allow.add(strip(v).toLowerCase()); }
+        else if (key === "excludeloadgametype") { for (const v of value.split(",")) if (strip(v)) exclude.add(strip(v).toLowerCase()); }
+      }
+      const gameTypes = ["camelot", "forever", "mainline"];
+      if ((allow !== null && !gameTypes.some((g) => allow.has(g))) || gameTypes.some((g) => exclude.has(g))) { out.status = "excluded"; return out; }
+      let interfaces = [];
+      for (const k of R.forever.interface_keys) if (keyed.get(k) && keyed.get(k).length) { interfaces = keyed.get(k); break; }
+      out.interface = interfaces.join(", ");
+      const [lo, hi] = R.forever.interface_range;
+      if (!interfaces.length) out.status = "unknown";
+      else if (interfaces.some((v) => lo <= v && v <= hi)) out.status = "loads";
+      else out.status = "outdated";
+      return out;
+    }
+
+    function tocStem(tocs) {
+      const rx = new RegExp(R.forever.flavor_suffix, "i");
+      const stems = tocs.map((t) => basename(t).slice(0, -4));
+      const plain = stems.filter((s) => !rx.test(s));
+      return plain.length ? plain[0] : stems[0].replace(rx, "");
+    }
+
+    function foreverDict(check, lang) {
+      const [label, detail] = R.forever.load[check.status][lang];
+      const fields = Object.assign({}, check, { flavor: flavorOf(numbers(check.interface), lang) });
+      return { status: check.status, text: label, detail: pyFormat(detail, fields), toc: check.toc, interface: check.interface };
+    }
+
+    function splitPackages(pkg) {
+      const roots = addonRoots(pkg.files);
+      if (roots.length < 2) return null;
+      const groups = new Map(roots.map((r) => [r, { name: basename(r), files: new Map(), hits: [], entries: 0, totalBytes: 0 }]));
+      const loose = { name: LOOSE, files: new Map(), hits: [], entries: 0, totalBytes: 0 };
+      const owner = (path) => { for (const r of roots) if (path === r || path.startsWith(r + "/")) return groups.get(r); return loose; };
+      for (const [path, data] of pkg.files) owner(path).files.set(path, data);
+      const all = [...groups.values(), loose];
+      for (const h of pkg.hits) {
+        const split = new Map();
+        for (const e of h.evidence) {
+          const g = owner(safeMember(e.file)[0]);
+          if (!split.has(g)) split.set(g, { id: h.id, evidence: [] });
+          split.get(g).evidence.push(e);
+        }
+        for (const g of all) if (split.has(g)) g.hits.push(split.get(g));
+      }
+      for (const g of all) {
+        const extra = new Set();
+        for (const h of g.hits) for (const e of h.evidence) if (!g.files.has(e.file)) extra.add(e.file);
+        g.entries = g.files.size + extra.size;
+        g.totalBytes = [...g.files.values()].reduce((s, b) => s + b.length, 0);
+      }
+      const out = [...groups.values()];
+      if (loose.files.size || loose.hits.length) out.push(loose);
+      return out;
+    }
+
     // -------------------------------------------------------------- analyse
 
     function analyse(pkg) {
@@ -1106,7 +1253,44 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       };
       const caps = {};
       for (const c of Object.keys(R.capabilities)) caps[c] = facts.caps.get(c) || [];
-      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2 };
+      const roots = addonRoots(pkg.files);
+      const root = roots.length === 1 ? roots[0] : "";
+      const name = root ? basename(root) : pkg.name.replace(/\.zip$/i, "");
+      return { target: pkg.name, severity: top, capabilities: caps, findings, addons, stats: stats2, forever: foreverCheck(pkg.files, root, name) };
+    }
+
+    function analyseAny(pkg) {
+      const parts = splitPackages(pkg);
+      if (parts === null) return analyse(pkg);
+      return { multi: true, target: pkg.name, reports: parts.map(analyse) };
+    }
+
+    function multiToDict(m, lang) {
+      const reports = m.reports.map((r) => toDict(r, lang));
+      let top = "info";
+      for (const r of m.reports) if (ORDER[r.severity] > ORDER[top]) top = r.severity;
+      const summary = m.reports.map((r, i) => {
+        const d = reports[i];
+        const a = r.addons[0] || {};
+        return {
+          name: d.target,
+          title: a.title || d.target,
+          version: a.version || "",
+          verdict: d.verdict,
+          forever: { status: d.forever.status, text: d.forever.text },
+          capabilities: d.capabilities.map((c) => ({ id: c.id, text: R.capability_short[c.id][lang] })),
+        };
+      });
+      return {
+        tool: { name: "addon-sentry", version: VERSION },
+        target: m.target,
+        multi: true,
+        verdict: { level: top, text: R.verdicts[top][lang] },
+        summary,
+        reports,
+        stats: { addons: m.reports.filter((r) => r.target !== LOOSE).length, files: reports.reduce((s, d) => s + d.stats.files, 0), lines: reports.reduce((s, d) => s + d.stats.lines, 0) },
+        disclaimer: R.disclaimer[lang],
+      };
     }
 
     function combine(facts, saved) {
@@ -1138,10 +1322,12 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     }
 
     function toDict(report, lang) {
+      if (report.multi) return multiToDict(report, lang);
       return {
         tool: { name: "addon-sentry", version: VERSION },
-        target: report.target,
+        target: report.target === LOOSE ? R.audit[lang].loose : report.target,
         verdict: { level: report.severity, text: R.verdicts[report.severity][lang] },
+        forever: report.forever ? foreverDict(report.forever, lang) : null,
         addons: report.addons,
         capabilities: Object.entries(report.capabilities)
           .filter(([, evs]) => evs.length)
@@ -1162,7 +1348,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
 
     async function scanZip(buffer, name, lang) {
       const pkg = await readZip(buffer, name || "addon.zip");
-      return toDict(analyse(pkg), lang || "es");
+      return toDict(analyseAny(pkg), lang || "es");
     }
 
     // -------------------------------------------------------------- WeakAuras strings (port of auras.py)
@@ -1684,7 +1870,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       return toDict(await analyseAura(text), lang || "es");
     }
 
-    return { scanZip, scanAura, readZip, analyse, analyseAura, toDict };
+    return { scanZip, scanAura, readZip, readFiles, analyse, analyseAny, analyseAura, toDict };
   }
 
   return { VERSION, ScanError, tokenize, scan, make };
@@ -1697,9 +1883,15 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   const T = {
     es: {
       tagline: "Revisá un addon de World of Warcraft antes de instalarlo: puertas traseras, trucos para mover tu oro, código escondido y archivos que no deberían estar ahí.",
-      drop: "Soltá acá el .zip del addon",
-      dropHint: "O elegilo desde tu compu. Funciona con cualquier addon, de Classic, Forever o retail.",
-      choose: "Elegir archivo",
+      drop: "Soltá acá el .zip del addon, o tu carpeta AddOns entera",
+      dropHint: "O elegilos desde tu compu. Con la carpeta te da una tabla por addon. Funciona con cualquier addon, de Classic, Forever o retail.",
+      choose: "Elegir .zip",
+      chooseFolder: "Elegir carpeta AddOns",
+      folderOf: (n) => `${n} archivo${n === 1 ? "" : "s"} leídos de la carpeta`,
+      noAddons: "En esa carpeta no hay ningún addon (ningún archivo .toc).",
+      loadsIn: "¿Carga en Forever?",
+      auditTitle: "Un veredicto por addon",
+      auditHint: "Tocá una fila para ir al detalle.",
       tryExample: "Ejemplos:",
       privacy: "El archivo no sale de tu compu: se analiza dentro de esta página y no se sube a ningún lado.",
       pasteTitle: "¿Es un aura de WeakAuras?",
@@ -1721,7 +1913,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       more: (n) => `y ${n} más`,
       busy: "Analizando…",
       errTitle: "No se pudo analizar",
-      notZip: "Elegí un archivo .zip.",
+      notZip: "Elegí un archivo .zip (o soltá una carpeta).",
       howTitle: "Cómo funciona",
       howText: "Lee el código Lua del addon sin ejecutarlo y busca patrones conocidos de estafas y malware. Distingue lo que el addon puede hacer (muchos addons legítimos mueven oro o mandan mensajes) de las combinaciones que no tienen explicación inocente.",
       looksTitle: "Qué busca",
@@ -1732,6 +1924,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         "Nombres de funciones armados de a pedazos para no llamar la atención",
         "Ejecutables, rutas que escapan de la carpeta y archivos con contraseña",
         "Addons que juntan estadísticas de otros jugadores",
+        "Si el zip es una build de Forever o de otra versión (las de Classic no cargan en Forever)",
         "Auras de WeakAuras que mandan tu oro, susurran tus datos o usan lo que WeakAuras bloquea",
       ],
       limitsTitle: "Lo que no puede",
@@ -1740,9 +1933,15 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     },
     en: {
       tagline: "Check a World of Warcraft addon before you install it: backdoors, tricks that move your gold, hidden code and files that should not be there.",
-      drop: "Drop the addon's .zip here",
-      dropHint: "Or pick it from your computer. Works with any addon: Classic, Forever or retail.",
-      choose: "Choose file",
+      drop: "Drop the addon's .zip here, or your whole AddOns folder",
+      dropHint: "Or pick them from your computer. With the folder you get one row per addon. Works with any addon: Classic, Forever or retail.",
+      choose: "Choose .zip",
+      chooseFolder: "Choose AddOns folder",
+      folderOf: (n) => `${n} file${n === 1 ? "" : "s"} read from the folder`,
+      noAddons: "There is no addon in that folder (no .toc file).",
+      loadsIn: "Loads in Forever?",
+      auditTitle: "One verdict per addon",
+      auditHint: "Click a row to jump to its details.",
       tryExample: "Examples:",
       privacy: "The file never leaves your computer: it is checked inside this page and not uploaded anywhere.",
       pasteTitle: "Is it a WeakAuras aura?",
@@ -1764,7 +1963,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       more: (n) => `and ${n} more`,
       busy: "Checking…",
       errTitle: "Could not check it",
-      notZip: "Choose a .zip file.",
+      notZip: "Choose a .zip file (or drop a folder).",
       howTitle: "How it works",
       howText: "It reads the addon's Lua code without running it and looks for known scam and malware patterns. It separates what an addon can do (many legitimate addons move gold or send messages) from combinations with no innocent explanation.",
       looksTitle: "What it looks for",
@@ -1775,6 +1974,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         "Function names built piece by piece to avoid notice",
         "Executables, paths that escape the folder and password-protected files",
         "Addons that collect other players' statistics",
+        "Whether the zip is a Forever build or one for another version (Classic builds do not load in Forever)",
         "WeakAuras auras that mail your gold, whisper your data or use what WeakAuras blocks",
       ],
       limitsTitle: "What it cannot do",
@@ -1814,6 +2014,50 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
 
   function render(d, isExample, fresh) {
     const r = $("#report");
+    if (d.multi) { renderMulti(d, isExample, fresh); return; }
+    r.replaceChildren(...sheetNodes(d, isExample, fresh, false), el("p", { class: "disclaimer", text: d.disclaimer }));
+  }
+
+  function foreverNode(f) {
+    if (!f) return null;
+    return el("p", { class: `forever fv-${f.status}` }, el("b", { text: f.text }), el("span", { text: f.detail }));
+  }
+
+  function renderMulti(d, isExample, fresh) {
+    const r = $("#report");
+    const L = T[lang];
+    const level = d.verdict.level;
+    const A = ADDON_SENTRY_RULES.audit[lang];
+    const head = el("div", { class: "sheet-head" },
+      el("div", {},
+        el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
+        el("p", { class: "target", text: L.auditTitle }),
+        el("p", { class: "meta", text: [A.count.replace("{n}", d.stats.addons), `${d.stats.files} ${L.files}`, `${d.stats.lines.toLocaleString(lang)} ${L.lines}`].join(" · ") }),
+      ),
+      el("div", { class: `stamp lvl-${level}${fresh ? " fresh" : ""}`, role: "img", "aria-label": d.verdict.text }, d.verdict.text, el("small", { text: A.worst })),
+    );
+    const idOf = (i) => `addon-${i}`;
+    const rows = d.summary.map((s, i) => {
+      const tr = el("tr", { tabindex: "0", role: "link" },
+        el("td", { class: "name" }, s.title, s.title !== s.name ? el("small", { text: s.name }) : null),
+        el("td", { class: "muted", text: s.version && s.version.indexOf("@") < 0 ? s.version : "" }),
+        el("td", {}, el("span", { class: `pill lvl-${s.verdict.level}`, text: s.verdict.text })),
+        el("td", { class: `fv-${s.forever.status}` }, s.forever.text),
+        el("td", { class: "muted", text: s.capabilities.length ? s.capabilities.map((c) => c.text).join(", ") : A.none }),
+      );
+      const go = () => { const t = document.getElementById(idOf(i)); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      tr.addEventListener("click", go);
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+      return tr;
+    });
+    const table = el("div", { class: "audit-wrap" }, el("table", { class: "audit" },
+      el("thead", {}, el("tr", {}, ...[A.addon, A.version, A.verdict, A.forever, A.caps].map((h) => el("th", { text: h })))),
+      el("tbody", {}, ...rows)), el("p", { class: "none", text: L.auditHint }));
+    const subs = d.reports.map((sub, i) => el("section", { class: "sub", id: idOf(i) }, ...sheetNodes(sub, false, false, true)));
+    r.replaceChildren(head, table, ...subs, el("p", { class: "disclaimer", text: d.disclaimer }));
+  }
+
+  function sheetNodes(d, isExample, fresh, nested) {
     const L = T[lang];
     const level = d.verdict.level;
     const a = d.addons[0] || {};
@@ -1823,7 +2067,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     const st = d.stats;
     const head = el("div", { class: "sheet-head" },
       el("div", {},
-        el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
+        nested ? null : el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
         el("p", { class: "target", text: title }),
         el("p", { class: "meta", text: (isAura
           ? [a.version, L.auras(st.auras), L.pieces(st.code_pieces), `${st.lines.toLocaleString(lang)} ${L.lines}`]
@@ -1851,7 +2095,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     const sig = el("div", {}, el("h2", { text: L.signals }),
       main.length ? el("ul", { class: "findings" }, ...main.map(findingNode)) : el("p", { class: "none", text: L.signalsNone }),
       minor.length ? el("details", { class: "quiet" }, el("summary", { text: L.minor(minor.reduce((s, f) => s + f.count, 0)) }), el("ul", { class: "findings" }, ...minor.map(findingNode))) : null);
-    r.replaceChildren(head, caps, sig, el("p", { class: "disclaimer", text: d.disclaimer }));
+    return [head, foreverNode(d.forever), caps, sig];
   }
 
   function renderError(msg) {
@@ -1885,6 +2129,51 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     }
   }
 
+  // A folder from <input webkitdirectory> (File objects with webkitRelativePath) or from a dropped directory entry.
+  async function runFolder(items, name) {
+    $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+    try {
+      if (!items.some((it) => /\.toc$/i.test(it.path))) { renderError(T[lang].noAddons); return; }
+      const pkg = await engine.readFiles(name, items);
+      current = { kind: "folder", pkg };
+      render(engine.toDict(engine.analyseAny(pkg), lang), false, true);
+      applyTexts();
+    } catch (err) {
+      renderError(err && err.message ? err.message : String(err));
+    }
+  }
+
+  function itemsFromFileList(list) {
+    const files = [...list];
+    const first = files[0] && files[0].webkitRelativePath ? files[0].webkitRelativePath.split("/")[0] : "";
+    // Strip the picked folder itself so an AddOns folder yields Addon/Addon.toc and one addon folder yields Addon.toc
+    const items = files.map((f) => {
+      const rel = f.webkitRelativePath || f.name;
+      const path = first && rel.startsWith(first + "/") ? rel.slice(first.length + 1) : rel;
+      return { path, size: f.size, read: async () => new Uint8Array(await f.arrayBuffer()) };
+    });
+    return { items, name: first || T[lang].chooseFolder };
+  }
+
+  async function itemsFromEntry(dirEntry) {
+    const items = [];
+    const readAll = (reader) => new Promise((res, rej) => {
+      const out = [];
+      const step = () => reader.readEntries((batch) => { if (!batch.length) res(out); else { out.push(...batch); step(); } }, rej);
+      step();
+    });
+    const walk = async (entry, prefix) => {
+      if (entry.isFile) {
+        const file = await new Promise((res, rej) => entry.file(res, rej));
+        items.push({ path: prefix + entry.name, size: file.size, read: async () => new Uint8Array(await file.arrayBuffer()) });
+      } else if (entry.isDirectory) {
+        for (const child of await readAll(entry.createReader())) await walk(child, prefix + entry.name + "/");
+      }
+    };
+    for (const child of await readAll(dirEntry.createReader())) await walk(child, "");
+    return items;
+  }
+
   async function runAura(text) {
     $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
     try {
@@ -1900,6 +2189,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     if (!current) return;
     if (current.kind === "example") return runExample(current.id, false);
     if (current.kind === "aura") return runAura(current.text);
+    if (current.kind === "folder") { render(engine.toDict(engine.analyseAny(current.pkg), lang), false, false); return; }
     render(await engine.scanZip(current.buffer, current.name, lang), false, false);
   }
 
@@ -1913,7 +2203,20 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   const tray = $("#tray");
   ["dragenter", "dragover"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.remove("over"); }));
-  tray.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) runFile(f); });
+  tray.addEventListener("drop", async (e) => {
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const item = dt.items && dt.items[0];
+    const entry = item && item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry && entry.isDirectory) {
+      $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+      try { runFolder(await itemsFromEntry(entry), entry.name); } catch (err) { renderError(err && err.message ? err.message : String(err)); }
+      return;
+    }
+    const f = dt.files[0];
+    if (f) runFile(f);
+  });
+  $("#folder").addEventListener("change", (e) => { const { items, name } = itemsFromFileList(e.target.files); if (items.length) runFolder(items, name); e.target.value = ""; });
   const auraBox = $("#aura"), auraGo = $("#aura-go");
   auraBox.addEventListener("input", () => { auraGo.disabled = !auraBox.value.trim(); });
   auraGo.addEventListener("click", () => { if (auraBox.value.trim()) runAura(auraBox.value); });

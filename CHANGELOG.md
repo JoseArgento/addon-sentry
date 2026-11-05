@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (2026-11-04)
+
+- **Does it load in Forever?** Every addon report says what its TOC declares: loads in Forever (Interface 1.60.x in the TOC Forever picks: `_Camelot`, `_Forever`, `_Mainline`, plain), not a Forever build (with the version it is for), Forever will not list it (no TOC named after the folder, with the folder name to use), excluded on purpose, or no Interface line. `## Interface-Forever`/`-Camelot`/`-Mainline` win over `## Interface`. Informational: never changes the verdict.
+- **One verdict per addon** for a folder or zip that holds several addons (a whole `AddOns` folder): a table (addon · version · verdict · Forever · can do) and the details of each one. The top verdict is the worst of the set; multi-file signals no longer mix across addons. The page takes a folder too ("Choose AddOns folder" or drop it); everything stays in the browser.
+- JSON: new `forever` object per report; multi-addon reports have `multi: true`, `summary` and `reports`.
+- Tests: fixtures for a Classic-only build, `## Interface-Forever`, and a mixed `AddOns` folder; parity on them; `tests/test_page.py` drives the page in Chromium.
+
 ## 0.1.0 (2026-11-04)
 
 First release.

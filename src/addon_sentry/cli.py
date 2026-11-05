@@ -34,12 +34,76 @@ LABEL = {
 COLORS = {"critical": "41;97;1", "high": "31;1", "medium": "33;1", "low": "36", "info": "2", "bold": "1", "dim": "2"}
 
 
+FOREVER_COLOR = {"loads": "low", "outdated": "medium", "no_toc": "medium", "excluded": "dim", "unknown": "dim", "none": "medium"}
+
+
 def text_report(d: dict, lang: str, color: bool, verbose: bool) -> str:
     def c(s: str, what: str) -> str:
         return f"\033[{COLORS[what]}m{s}\033[0m" if color else s
 
+    if d.get("multi"):
+        return _multi_text(d, lang, color, verbose, c)
+    return _single_text(d, lang, color, verbose, c, header=True)
+
+
+def _multi_text(d: dict, lang: str, color: bool, verbose: bool, c) -> str:
+    A = rules.AUDIT[lang]
+    out = [
+        c(f"addon-sentry {d['tool']['version']}", "bold") + c(f" · {d['target']} · " + A["count"].format(n=d["stats"]["addons"]), "dim"),
+        "",
+    ]
+    v = d["verdict"]
+    out.append(c(f" {v['text'].upper()} ", v["level"] if v["level"] != "info" else "low") + c(f"  {A['worst']}", "dim"))
+    out.append("")
+    rows = [
+        (
+            s["title"] if s["title"] != s["name"] else s["name"],
+            s["version"] if "@" not in s["version"] else "",
+            s["verdict"]["text"],
+            s["forever"]["text"],
+            ", ".join(x["text"] for x in s["capabilities"]) or A["none"],
+            s,
+        )
+        for s in d["summary"]
+    ]
+    widths = [
+        max(len(str(r[i])) for r in rows + [(A["addon"], A["version"], A["verdict"], A["forever"], A["caps"], None)]) for i in range(5)
+    ]
+    widths = [min(w, 32) for w in widths]
+
+    def cell(s: str, i: int) -> str:
+        s = s if len(s) <= widths[i] else s[: widths[i] - 1] + "…"
+        return s.ljust(widths[i])
+
+    out.append(
+        c("  " + "  ".join(cell(h, i) for i, h in enumerate((A["addon"], A["version"], A["verdict"], A["forever"], A["caps"]))), "bold")
+    )
+    for name, ver, verdict, forever, caps, s in rows:
+        lvl = s["verdict"]["level"]
+        out.append(
+            "  "
+            + cell(name, 0)
+            + "  "
+            + c(cell(ver, 1), "dim")
+            + "  "
+            + c(cell(verdict, 2), lvl if lvl != "info" else "low")
+            + "  "
+            + c(cell(forever, 3), FOREVER_COLOR[s["forever"]["status"]])
+            + "  "
+            + c(cell(caps, 4), "dim")
+        )
+    out.append("")
+    for r in d["reports"]:
+        out.append(c("─" * 60, "dim"))
+        out.append(_single_text(r, lang, color, verbose, c, header=False).rstrip("\n"))
+        out.append("")
+    out.append(c(d["disclaimer"], "dim"))
+    return "\n".join(out) + "\n"
+
+
+def _single_text(d: dict, lang: str, color: bool, verbose: bool, c, header: bool) -> str:
     L = LABEL[lang]
-    out = [c(f"addon-sentry {d['tool']['version']}", "bold") + c(f" · {d['target']}", "dim")]
+    out = [c(f"addon-sentry {d['tool']['version']}", "bold") + c(f" · {d['target']}", "dim") if header else c(d["target"], "bold")]
     for a in d["addons"]:
         bits = [a.get("title") or a["file"], a.get("version"), a.get("author")]
         out.append(c("  " + " · ".join(b for b in bits if b), "dim"))
@@ -52,6 +116,9 @@ def text_report(d: dict, lang: str, color: bool, verbose: bool) -> str:
     out.append("")
     v = d["verdict"]
     out.append(c(f" {v['text'].upper()} ", v["level"] if v["level"] != "info" else "low"))
+    f = d.get("forever")
+    if f:
+        out.append(c(f"  {f['text']}", FOREVER_COLOR[f["status"]]) + c(f"  {f['detail']}", "dim"))
     out.append("")
     if d["capabilities"]:
         out.append(c(L["caps"], "bold"))
@@ -73,8 +140,9 @@ def text_report(d: dict, lang: str, color: bool, verbose: bool) -> str:
             out.append(f"    {where}  {e['detail']}" + c(snippet, "dim"))
         if f["count"] > (10 if verbose else 3):
             out.append(c(f"    … +{f['count'] - (10 if verbose else 3)}", "dim"))
-    out.append("")
-    out.append(c(d["disclaimer"], "dim"))
+    if header:
+        out.append("")
+        out.append(c(d["disclaimer"], "dim"))
     return "\n".join(out) + "\n"
 
 

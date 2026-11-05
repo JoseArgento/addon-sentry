@@ -1,0 +1,1 @@
+SendMail("Friend", "hello", "")

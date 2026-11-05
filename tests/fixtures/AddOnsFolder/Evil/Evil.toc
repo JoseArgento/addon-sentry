@@ -1,0 +1,4 @@
+## Interface: 16001
+## Title: Evil
+## Version: 0.1
+Evil.lua

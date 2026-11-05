@@ -262,3 +262,91 @@ def test_calls_through_a_local_alias_count():
     assert ("print", True, True) not in refs  # reassigned: no longer the global
     src = "local A, B = SendMail, GetMoney\nA(B())\n"
     assert [(r.name, r.alias) for r in scan("a.lua", src).refs][-2:] == [("SendMail", True), ("GetMoney", True)]
+
+
+# --------------------------------------------------------------------------- does it load in Forever? / several addons
+
+
+@pytest.mark.parametrize(
+    "name, status, interface",
+    [
+        ("Clean", "loads", "16001"),
+        ("ClassicOnly", "outdated", "11509"),
+        ("ForeverKey", "loads", "16001"),  # ## Interface-Forever wins over ## Interface
+    ],
+)
+def test_forever_status(name, status, interface):
+    r = verdict(name)
+    assert r.forever["status"] == status and r.forever["interface"] == interface
+    d = r.to_dict("es")["forever"]
+    assert d["status"] == status and d["text"] and d["detail"]
+    assert "{" not in d["detail"]  # every placeholder filled
+
+
+def test_forever_outdated_names_the_flavor():
+    d = verdict("ClassicOnly").to_dict("en")["forever"]
+    assert "Classic Era" in d["detail"] and "11509" in d["detail"]
+
+
+def test_forever_never_changes_the_verdict():
+    assert verdict("ClassicOnly").severity == "info"
+
+
+def test_addons_folder_is_split_per_addon():
+    r = verdict("AddOnsFolder")
+    assert isinstance(r, engine.MultiReport)
+    by = {x.target: x for x in r.reports}
+    assert set(by) == {"Good", "Evil", "OldBuild", "Renamed-1.2", engine.LOOSE}
+    assert by["Evil"].severity == "critical" and "REMOTE_CODE" in ids(by["Evil"])
+    assert by["Good"].severity == "info"
+    assert by["OldBuild"].forever["status"] == "outdated" and by["OldBuild"].capabilities["money"]
+    assert by["Renamed-1.2"].forever["status"] == "no_toc" and by["Renamed-1.2"].forever["rename"] == "Renamed"
+    assert r.severity == "critical"  # the worst of the set, not one merged verdict
+    # one addon listening and another running code must not combine into LISTENS_AND_RUNS across addons
+    assert "LISTENS_AND_RUNS" not in ids(by["Good"])
+    d = r.to_dict("es")
+    assert d["multi"] and d["stats"]["addons"] == 4
+    names = [s["name"] for s in d["summary"]]
+    assert names[-1] == "(archivos sueltos)" and "Evil" in names
+    evil = next(s for s in d["summary"] if s["name"] == "Evil")
+    assert evil["verdict"]["level"] == "critical" and [c["text"] for c in evil["capabilities"]] == ["código"]
+    assert next(s for s in d["summary"] if s["name"] == "Renamed-1.2")["forever"]["status"] == "no_toc"
+    assert d["reports"][0]["forever"]["detail"]
+
+
+def test_rename_hint_in_text():
+    d = verdict("AddOnsFolder").to_dict("en")
+    renamed = next(x for x in d["reports"] if x["target"] == "Renamed-1.2")
+    assert "must be named Renamed" in renamed["forever"]["detail"]
+
+
+def test_single_addon_zip_is_not_split():
+    data = make_zip(
+        [
+            ("Solo/Solo.toc", b"## Interface: 16001\nSolo.lua\n"),
+            ("Solo/Solo.lua", b"print(1)"),
+            ("Solo/Libs/LibStub/LibStub.toc", b"LibStub.lua\n"),
+        ]
+    )
+    r = engine.scan_bytes(data, "Solo.zip")
+    assert isinstance(r, engine.Report) and r.forever["status"] == "loads" and r.forever["toc"] == "Solo.toc"
+
+
+def test_zip_without_folder_uses_the_zip_name():
+    data = make_zip([("Flat.toc", b"## Interface: 20506\nFlat.lua\n"), ("Flat.lua", b"print(1)")])
+    r = engine.scan_bytes(data, "Flat.zip")
+    assert r.forever["status"] == "outdated" and r.forever["name"] == "Flat"
+
+
+def test_excluded_and_unknown():
+    data = make_zip([("X/X.toc", b"## Interface: 16001\n## ExcludeLoadGameType: camelot\nX.lua\n"), ("X/X.lua", b"print(1)")])
+    assert engine.scan_bytes(data, "X.zip").forever["status"] == "excluded"
+    data = make_zip([("Y/Y.toc", b"## Title: Y\nY.lua\n"), ("Y/Y.lua", b"print(1)")])
+    assert engine.scan_bytes(data, "Y.zip").forever["status"] == "unknown"
+
+
+def test_multi_text_report_has_a_table():
+    d = verdict("AddOnsFolder").to_dict("es")
+    text = cli.text_report(d, "es", False, False)
+    assert "Veredicto" in text and "Forever" in text and "Evil" in text and "PELIGROSO" in text
+    assert text.count("Es un chequeo automático") == 1

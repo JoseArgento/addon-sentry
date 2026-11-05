@@ -676,6 +676,113 @@ DISCLAIMER = {
     "es": "Es un chequeo automático de patrones en el código. No puede probar que un addon sea seguro, y una advertencia no prueba mala intención. Ante la duda, bajá los addons solo de su página oficial.",
 }
 
+# --------------------------------------------------------------------------- does it load in Forever?
+
+# Forever's game type is "camelot" (alias "forever") in the "mainline" family, so the client looks for
+# <Addon>_Camelot.toc, then _Forever, _Mainline and the plain <Addon>.toc (warcraft.wiki.gg, "TOC format").
+FOREVER_TOC_SUFFIXES = ["_Camelot", "_Forever", "_Mainline", ""]
+# Per-flavor Interface keys win over the plain one, in the same order.
+FOREVER_INTERFACE_KEYS = ["interface-camelot", "interface-forever", "interface-mainline", "interface"]
+TOC_FLAVOR_SUFFIX = r"[_-](Mainline|Standard|Forever|Camelot|Vanilla|Classic|TBC|BCC|Wrath|WOTLKC|Cata|Mists)$"
+FOREVER_INTERFACE_RANGE = (16000, 16999)  # 1.60.x; a patch bumps 16001 to 16002 and the addon is still a Forever build
+
+# What an Interface number says about the build (first digits of the version). Informational only.
+INTERFACE_FLAVORS = [
+    (16000, 16999, {"es": "Forever", "en": "Forever"}),
+    (11000, 11999, {"es": "Classic Era / Anniversary", "en": "Classic Era / Anniversary"}),
+    (20000, 29999, {"es": "Burning Crusade Classic", "en": "Burning Crusade Classic"}),
+    (30000, 39999, {"es": "Wrath Classic", "en": "Wrath Classic"}),
+    (40000, 49999, {"es": "Cataclysm Classic", "en": "Cataclysm Classic"}),
+    (50000, 59999, {"es": "Mists Classic", "en": "Mists Classic"}),
+    (100000, 999999, {"es": "retail", "en": "retail"}),
+]
+
+# Short label and the explanation shown under it. Placeholders: {name}, {toc}, {tocs}, {interface}, {flavor}.
+FOREVER_LOAD = {
+    "loads": {
+        "en": ("Loads in Forever", "{toc} declares Interface {interface}: it is a Forever build."),
+        "es": ("Carga en Forever", "{toc} declara Interface {interface}: es una build para Forever."),
+    },
+    "outdated": {
+        "en": (
+            "Not a Forever build",
+            "{toc} declares Interface {interface} ({flavor}). Forever marks it as out of date, and even if you load it anyway it will fail wherever it uses API that Forever does not have. Look for a file marked Forever on the addon's page.",
+        ),
+        "es": (
+            "No es una build de Forever",
+            "{toc} declara Interface {interface} ({flavor}). Forever lo marca como desactualizado y, aunque lo cargues igual, va a fallar donde use API que Forever no tiene. Buscá en la página del addon el archivo marcado para Forever.",
+        ),
+    },
+    "no_toc": {
+        "en": (
+            "Forever will not list it",
+            "No TOC that Forever reads: it looks for {name}_Camelot.toc, {name}_Forever.toc, {name}_Mainline.toc or {name}.toc, and the folder has {tocs}. If this is a GitHub zip, the folder must be named {rename}.",
+        ),
+        "es": (
+            "Forever no lo va a listar",
+            "No tiene un TOC que Forever lea: busca {name}_Camelot.toc, {name}_Forever.toc, {name}_Mainline.toc o {name}.toc, y la carpeta trae {tocs}. Si es un zip de GitHub, la carpeta se tiene que llamar {rename}.",
+        ),
+    },
+    "excluded": {
+        "en": (
+            "Excludes Forever on purpose",
+            "{toc} leaves Forever out with AllowLoadGameType/ExcludeLoadGameType, so it does not load there.",
+        ),
+        "es": (
+            "Excluye a Forever a propósito",
+            "{toc} deja afuera a Forever con AllowLoadGameType/ExcludeLoadGameType, así que ahí no carga.",
+        ),
+    },
+    "unknown": {
+        "en": ("No Interface version", "{toc} does not say which game version it is for. Forever will list it as out of date."),
+        "es": ("Sin versión de interfaz", "{toc} no dice para qué versión del juego es. Forever lo va a listar como desactualizado."),
+    },
+    "none": {
+        "en": ("No TOC at all", "There is no .toc file: the game cannot load this as an addon."),
+        "es": ("Sin TOC", "No hay ningún archivo .toc: el juego no puede cargar esto como addon."),
+    },
+}
+
+# Texts for the per-addon table when a zip or folder holds several addons (a whole AddOns folder).
+AUDIT = {
+    "en": {
+        "title": "Several addons",
+        "count": "{n} addons",
+        "addon": "Addon",
+        "version": "Version",
+        "verdict": "Verdict",
+        "forever": "Forever",
+        "caps": "Can do",
+        "none": "nothing sensitive",
+        "loose": "(loose files)",
+        "worst": "Worst of the set",
+    },
+    "es": {
+        "title": "Varios addons",
+        "count": "{n} addons",
+        "addon": "Addon",
+        "version": "Versión",
+        "verdict": "Veredicto",
+        "forever": "Forever",
+        "caps": "Puede",
+        "none": "nada sensible",
+        "loose": "(archivos sueltos)",
+        "worst": "El peor del conjunto",
+    },
+}
+
+# One or two words per capability, for the table.
+CAPABILITY_SHORT = {
+    "money": {"es": "oro", "en": "gold"},
+    "chat": {"es": "mensajes", "en": "messages"},
+    "code": {"es": "código", "en": "code"},
+    "account": {"es": "cuenta", "en": "account"},
+    "sabotage": {"es": "sabotaje", "en": "sabotage"},
+    "profiling": {"es": "perfilado", "en": "profiling"},
+    "frames": {"es": "interfaz", "en": "UI"},
+    "macros": {"es": "macros", "en": "macros"},
+}
+
 
 def export() -> dict:
     """Everything the JavaScript engine needs, so both engines share one source of truth."""
@@ -696,6 +803,16 @@ def export() -> dict:
         "findings": FINDINGS,
         "verdicts": VERDICTS,
         "disclaimer": DISCLAIMER,
+        "forever": {
+            "toc_suffixes": FOREVER_TOC_SUFFIXES,
+            "interface_keys": FOREVER_INTERFACE_KEYS,
+            "interface_range": list(FOREVER_INTERFACE_RANGE),
+            "flavor_suffix": TOC_FLAVOR_SUFFIX,
+            "flavors": [[lo, hi, names] for lo, hi, names in INTERFACE_FLAVORS],
+            "load": FOREVER_LOAD,
+        },
+        "audit": AUDIT,
+        "capability_short": CAPABILITY_SHORT,
         "aura": {
             "blocked": sorted(AURA_BLOCKED),
             "code_keys": sorted(_auras.CODE_KEYS),

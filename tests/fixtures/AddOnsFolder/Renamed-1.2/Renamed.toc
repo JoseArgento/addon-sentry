@@ -1,0 +1,4 @@
+## Interface: 16001
+## Title: Renamed
+## Version: 1.2
+Core.lua

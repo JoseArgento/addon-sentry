@@ -121,6 +121,26 @@ h2 { font: 800 22px/1 var(--display); letter-spacing: 0.04em; text-transform: up
 details.quiet summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 details.quiet[open] summary { margin-bottom: 10px; }
 
+.forever { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0; font-size: 15px; }
+.forever b { font: 500 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; border: 1px solid currentColor; }
+.forever span { color: var(--muted); max-width: 70ch; }
+.fv-loads { color: var(--ok); } .fv-outdated, .fv-no_toc, .fv-none { color: var(--high); } .fv-excluded, .fv-unknown { color: var(--muted); }
+.audit { width: 100%; border-collapse: collapse; font-size: 14px; }
+.audit th { text-align: left; font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); }
+.audit td { padding: 8px 10px 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent); vertical-align: top; }
+.audit td.name { font-weight: 700; }
+.audit td.name small { display: block; font-weight: 400; color: var(--muted); }
+.audit td.muted { color: var(--muted); }
+.audit tr { cursor: pointer; }
+.audit tr:hover td { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.audit .pill { display: inline-block; font: 700 13px var(--body); padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.audit .pill.lvl-low, .audit .pill.lvl-info { color: var(--ok); }
+.audit-wrap { overflow-x: auto; }
+.sub { border-top: 2px solid var(--rule); padding-top: 18px; display: grid; gap: 16px; scroll-margin-top: 16px; }
+@media (min-width: 561px) { .sub .sheet-head { grid-template-columns: 1fr auto; } }
+.sub .stamp { font-size: 20px; border-width: 3px; padding: 6px 12px 4px; transform: rotate(-4deg); }
+.pick.secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+.tray-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .disclaimer { border-top: 1px solid var(--rule); padding-top: 14px; margin: 0; font-size: 14px; color: var(--muted); max-width: 75ch; }
 .error { border-left: 5px solid var(--crit); padding: 10px 14px; background: color-mix(in srgb, var(--crit) 8%, transparent); border-radius: 0 6px 6px 0; margin: 0; }
 .busy { color: var(--muted); font: 500 14px var(--mono); }
@@ -153,11 +173,18 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         <strong id="tray-title" data-t="drop"></strong>
         <span data-t="dropHint"></span>
       </div>
-      <label class="pick">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
-        <span data-t="choose"></span>
-        <input type="file" id="file" accept=".zip,application/zip">
-      </label>
+      <div class="tray-actions">
+        <label class="pick">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
+          <span data-t="choose"></span>
+          <input type="file" id="file" accept=".zip,application/zip">
+        </label>
+        <label class="pick secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span data-t="chooseFolder"></span>
+          <input type="file" id="folder" webkitdirectory directory multiple>
+        </label>
+      </div>
     </div>
     <details class="paste" id="paste">
       <summary><span class="paste-title" data-t="pasteTitle"></span><span data-t="pasteHint"></span></summary>
@@ -205,9 +232,15 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   const T = {
     es: {
       tagline: "Revisá un addon de World of Warcraft antes de instalarlo: puertas traseras, trucos para mover tu oro, código escondido y archivos que no deberían estar ahí.",
-      drop: "Soltá acá el .zip del addon",
-      dropHint: "O elegilo desde tu compu. Funciona con cualquier addon, de Classic, Forever o retail.",
-      choose: "Elegir archivo",
+      drop: "Soltá acá el .zip del addon, o tu carpeta AddOns entera",
+      dropHint: "O elegilos desde tu compu. Con la carpeta te da una tabla por addon. Funciona con cualquier addon, de Classic, Forever o retail.",
+      choose: "Elegir .zip",
+      chooseFolder: "Elegir carpeta AddOns",
+      folderOf: (n) => `${n} archivo${n === 1 ? "" : "s"} leídos de la carpeta`,
+      noAddons: "En esa carpeta no hay ningún addon (ningún archivo .toc).",
+      loadsIn: "¿Carga en Forever?",
+      auditTitle: "Un veredicto por addon",
+      auditHint: "Tocá una fila para ir al detalle.",
       tryExample: "Ejemplos:",
       privacy: "El archivo no sale de tu compu: se analiza dentro de esta página y no se sube a ningún lado.",
       pasteTitle: "¿Es un aura de WeakAuras?",
@@ -229,7 +262,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       more: (n) => `y ${n} más`,
       busy: "Analizando…",
       errTitle: "No se pudo analizar",
-      notZip: "Elegí un archivo .zip.",
+      notZip: "Elegí un archivo .zip (o soltá una carpeta).",
       howTitle: "Cómo funciona",
       howText: "Lee el código Lua del addon sin ejecutarlo y busca patrones conocidos de estafas y malware. Distingue lo que el addon puede hacer (muchos addons legítimos mueven oro o mandan mensajes) de las combinaciones que no tienen explicación inocente.",
       looksTitle: "Qué busca",
@@ -240,6 +273,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         "Nombres de funciones armados de a pedazos para no llamar la atención",
         "Ejecutables, rutas que escapan de la carpeta y archivos con contraseña",
         "Addons que juntan estadísticas de otros jugadores",
+        "Si el zip es una build de Forever o de otra versión (las de Classic no cargan en Forever)",
         "Auras de WeakAuras que mandan tu oro, susurran tus datos o usan lo que WeakAuras bloquea",
       ],
       limitsTitle: "Lo que no puede",
@@ -248,9 +282,15 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     },
     en: {
       tagline: "Check a World of Warcraft addon before you install it: backdoors, tricks that move your gold, hidden code and files that should not be there.",
-      drop: "Drop the addon's .zip here",
-      dropHint: "Or pick it from your computer. Works with any addon: Classic, Forever or retail.",
-      choose: "Choose file",
+      drop: "Drop the addon's .zip here, or your whole AddOns folder",
+      dropHint: "Or pick them from your computer. With the folder you get one row per addon. Works with any addon: Classic, Forever or retail.",
+      choose: "Choose .zip",
+      chooseFolder: "Choose AddOns folder",
+      folderOf: (n) => `${n} file${n === 1 ? "" : "s"} read from the folder`,
+      noAddons: "There is no addon in that folder (no .toc file).",
+      loadsIn: "Loads in Forever?",
+      auditTitle: "One verdict per addon",
+      auditHint: "Click a row to jump to its details.",
       tryExample: "Examples:",
       privacy: "The file never leaves your computer: it is checked inside this page and not uploaded anywhere.",
       pasteTitle: "Is it a WeakAuras aura?",
@@ -272,7 +312,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
       more: (n) => `and ${n} more`,
       busy: "Checking…",
       errTitle: "Could not check it",
-      notZip: "Choose a .zip file.",
+      notZip: "Choose a .zip file (or drop a folder).",
       howTitle: "How it works",
       howText: "It reads the addon's Lua code without running it and looks for known scam and malware patterns. It separates what an addon can do (many legitimate addons move gold or send messages) from combinations with no innocent explanation.",
       looksTitle: "What it looks for",
@@ -283,6 +323,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
         "Function names built piece by piece to avoid notice",
         "Executables, paths that escape the folder and password-protected files",
         "Addons that collect other players' statistics",
+        "Whether the zip is a Forever build or one for another version (Classic builds do not load in Forever)",
         "WeakAuras auras that mail your gold, whisper your data or use what WeakAuras blocks",
       ],
       limitsTitle: "What it cannot do",
@@ -322,6 +363,50 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
 
   function render(d, isExample, fresh) {
     const r = $("#report");
+    if (d.multi) { renderMulti(d, isExample, fresh); return; }
+    r.replaceChildren(...sheetNodes(d, isExample, fresh, false), el("p", { class: "disclaimer", text: d.disclaimer }));
+  }
+
+  function foreverNode(f) {
+    if (!f) return null;
+    return el("p", { class: `forever fv-${f.status}` }, el("b", { text: f.text }), el("span", { text: f.detail }));
+  }
+
+  function renderMulti(d, isExample, fresh) {
+    const r = $("#report");
+    const L = T[lang];
+    const level = d.verdict.level;
+    const A = ADDON_SENTRY_RULES.audit[lang];
+    const head = el("div", { class: "sheet-head" },
+      el("div", {},
+        el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
+        el("p", { class: "target", text: L.auditTitle }),
+        el("p", { class: "meta", text: [A.count.replace("{n}", d.stats.addons), `${d.stats.files} ${L.files}`, `${d.stats.lines.toLocaleString(lang)} ${L.lines}`].join(" · ") }),
+      ),
+      el("div", { class: `stamp lvl-${level}${fresh ? " fresh" : ""}`, role: "img", "aria-label": d.verdict.text }, d.verdict.text, el("small", { text: A.worst })),
+    );
+    const idOf = (i) => `addon-${i}`;
+    const rows = d.summary.map((s, i) => {
+      const tr = el("tr", { tabindex: "0", role: "link" },
+        el("td", { class: "name" }, s.title, s.title !== s.name ? el("small", { text: s.name }) : null),
+        el("td", { class: "muted", text: s.version && s.version.indexOf("@") < 0 ? s.version : "" }),
+        el("td", {}, el("span", { class: `pill lvl-${s.verdict.level}`, text: s.verdict.text })),
+        el("td", { class: `fv-${s.forever.status}` }, s.forever.text),
+        el("td", { class: "muted", text: s.capabilities.length ? s.capabilities.map((c) => c.text).join(", ") : A.none }),
+      );
+      const go = () => { const t = document.getElementById(idOf(i)); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); };
+      tr.addEventListener("click", go);
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+      return tr;
+    });
+    const table = el("div", { class: "audit-wrap" }, el("table", { class: "audit" },
+      el("thead", {}, el("tr", {}, ...[A.addon, A.version, A.verdict, A.forever, A.caps].map((h) => el("th", { text: h })))),
+      el("tbody", {}, ...rows)), el("p", { class: "none", text: L.auditHint }));
+    const subs = d.reports.map((sub, i) => el("section", { class: "sub", id: idOf(i) }, ...sheetNodes(sub, false, false, true)));
+    r.replaceChildren(head, table, ...subs, el("p", { class: "disclaimer", text: d.disclaimer }));
+  }
+
+  function sheetNodes(d, isExample, fresh, nested) {
     const L = T[lang];
     const level = d.verdict.level;
     const a = d.addons[0] || {};
@@ -331,7 +416,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     const st = d.stats;
     const head = el("div", { class: "sheet-head" },
       el("div", {},
-        el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
+        nested ? null : el("p", { class: "eyebrow" }, isExample ? el("span", { class: "example-flag", text: L.example }) : L.scanned, " · ", d.target),
         el("p", { class: "target", text: title }),
         el("p", { class: "meta", text: (isAura
           ? [a.version, L.auras(st.auras), L.pieces(st.code_pieces), `${st.lines.toLocaleString(lang)} ${L.lines}`]
@@ -359,7 +444,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     const sig = el("div", {}, el("h2", { text: L.signals }),
       main.length ? el("ul", { class: "findings" }, ...main.map(findingNode)) : el("p", { class: "none", text: L.signalsNone }),
       minor.length ? el("details", { class: "quiet" }, el("summary", { text: L.minor(minor.reduce((s, f) => s + f.count, 0)) }), el("ul", { class: "findings" }, ...minor.map(findingNode))) : null);
-    r.replaceChildren(head, caps, sig, el("p", { class: "disclaimer", text: d.disclaimer }));
+    return [head, foreverNode(d.forever), caps, sig];
   }
 
   function renderError(msg) {
@@ -393,6 +478,51 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     }
   }
 
+  // A folder from <input webkitdirectory> (File objects with webkitRelativePath) or from a dropped directory entry.
+  async function runFolder(items, name) {
+    $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+    try {
+      if (!items.some((it) => /\.toc$/i.test(it.path))) { renderError(T[lang].noAddons); return; }
+      const pkg = await engine.readFiles(name, items);
+      current = { kind: "folder", pkg };
+      render(engine.toDict(engine.analyseAny(pkg), lang), false, true);
+      applyTexts();
+    } catch (err) {
+      renderError(err && err.message ? err.message : String(err));
+    }
+  }
+
+  function itemsFromFileList(list) {
+    const files = [...list];
+    const first = files[0] && files[0].webkitRelativePath ? files[0].webkitRelativePath.split("/")[0] : "";
+    // Strip the picked folder itself so an AddOns folder yields Addon/Addon.toc and one addon folder yields Addon.toc
+    const items = files.map((f) => {
+      const rel = f.webkitRelativePath || f.name;
+      const path = first && rel.startsWith(first + "/") ? rel.slice(first.length + 1) : rel;
+      return { path, size: f.size, read: async () => new Uint8Array(await f.arrayBuffer()) };
+    });
+    return { items, name: first || T[lang].chooseFolder };
+  }
+
+  async function itemsFromEntry(dirEntry) {
+    const items = [];
+    const readAll = (reader) => new Promise((res, rej) => {
+      const out = [];
+      const step = () => reader.readEntries((batch) => { if (!batch.length) res(out); else { out.push(...batch); step(); } }, rej);
+      step();
+    });
+    const walk = async (entry, prefix) => {
+      if (entry.isFile) {
+        const file = await new Promise((res, rej) => entry.file(res, rej));
+        items.push({ path: prefix + entry.name, size: file.size, read: async () => new Uint8Array(await file.arrayBuffer()) });
+      } else if (entry.isDirectory) {
+        for (const child of await readAll(entry.createReader())) await walk(child, prefix + entry.name + "/");
+      }
+    };
+    for (const child of await readAll(dirEntry.createReader())) await walk(child, "");
+    return items;
+  }
+
   async function runAura(text) {
     $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
     try {
@@ -408,6 +538,7 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
     if (!current) return;
     if (current.kind === "example") return runExample(current.id, false);
     if (current.kind === "aura") return runAura(current.text);
+    if (current.kind === "folder") { render(engine.toDict(engine.analyseAny(current.pkg), lang), false, false); return; }
     render(await engine.scanZip(current.buffer, current.name, lang), false, false);
   }
 
@@ -421,7 +552,20 @@ footer { color: var(--muted); font-size: 13px; text-align: left; }
   const tray = $("#tray");
   ["dragenter", "dragover"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => tray.addEventListener(ev, (e) => { e.preventDefault(); tray.classList.remove("over"); }));
-  tray.addEventListener("drop", (e) => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) runFile(f); });
+  tray.addEventListener("drop", async (e) => {
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const item = dt.items && dt.items[0];
+    const entry = item && item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+    if (entry && entry.isDirectory) {
+      $("#report").replaceChildren(el("p", { class: "busy", text: T[lang].busy }));
+      try { runFolder(await itemsFromEntry(entry), entry.name); } catch (err) { renderError(err && err.message ? err.message : String(err)); }
+      return;
+    }
+    const f = dt.files[0];
+    if (f) runFile(f);
+  });
+  $("#folder").addEventListener("change", (e) => { const { items, name } = itemsFromFileList(e.target.files); if (items.length) runFolder(items, name); e.target.value = ""; });
   const auraBox = $("#aura"), auraGo = $("#aura-go");
   auraBox.addEventListener("input", () => { auraGo.disabled = !auraBox.value.trim(); });
   auraGo.addEventListener("click", () => { if (auraBox.value.trim()) runAura(auraBox.value); });
